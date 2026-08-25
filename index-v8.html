@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>钟馗 · 一笔镇妖</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; touch-action: none; user-select: none; -webkit-user-select: none; font-family: 'KaiTi','STKaiti','PingFang SC',serif; }
+canvas { display: block; width: 100%; height: 100%; }
+
+/* ====== 教程覆盖层 ====== */
+#tutorial {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(3,3,10,0.96);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 200; transition: opacity 0.8s;
+  overflow-y: auto;
+}
+#tutorial.hidden { opacity: 0; pointer-events: none; }
+#tutorial .step {
+  display: none; flex-direction: column; align-items: center;
+  text-align: center; padding: 24px 20px; max-width: 360px;
+  animation: fadeUp 0.6s ease-out;
+}
+@keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+#tutorial .step.active { display: flex; }
+
+/* 叙事文案排版 */
+#tutorial .narr {
+  font-size: 16px; color: rgba(255,255,255,0.85); line-height: 2.2;
+  letter-spacing: 1px; margin-bottom: 20px; text-align: left;
+  width: 100%;
+}
+#tutorial .narr .em { color: #ffd700; font-weight: bold; }
+#tutorial .narr .red { color: #cc3333; }
+#tutorial .narr .dim { color: rgba(255,255,255,0.4); font-size: 14px; }
+#tutorial .narr .big { font-size: 22px; display: block; margin: 12px 0; letter-spacing: 3px; }
+#tutorial .narr hr {
+  border: none; height: 1px; margin: 16px 0;
+  background: linear-gradient(90deg, transparent, rgba(255,215,0,0.3), transparent);
+}
+
+#tutorial .step-title {
+  font-size: 13px; color: rgba(255,215,0,0.5); letter-spacing: 4px;
+  margin-bottom: 16px; text-transform: uppercase;
+}
+
+/* 符形展示 */
+#tutorial .shape-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  width: 100%; margin: 16px 0;
+}
+#tutorial .shape-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 10px; padding: 12px 8px; text-align: center;
+}
+#tutorial .shape-card .glyph { font-size: 28px; color: #ffd700; }
+#tutorial .shape-card .name { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+#tutorial .shape-card .hint { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+/* 按钮 */
+#tutorial .btn-next {
+  padding: 14px 48px; font-size: 17px; font-family: inherit;
+  background: linear-gradient(135deg, #cc2222, #991111);
+  color: #fff; border: 1px solid rgba(255,100,100,0.3);
+  border-radius: 28px; cursor: pointer; letter-spacing: 3px;
+  box-shadow: 0 4px 24px rgba(200,30,30,0.3);
+  transition: all 0.2s; margin-top: 12px;
+}
+#tutorial .btn-next:active { transform: scale(0.95); }
+#tutorial .btn-skip {
+  margin-top: 16px; font-size: 12px; color: rgba(255,255,255,0.3);
+  cursor: pointer; border: none; background: none; font-family: inherit;
+}
+
+/* 进度点 */
+#tutorial .dots { display: flex; gap: 8px; margin-top: 20px; }
+#tutorial .dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.3s; }
+#tutorial .dots span.active { background: #ffd700; box-shadow: 0 0 6px rgba(255,215,0,0.5); }
+
+/* 美术占位 */
+.art-placeholder {
+  width: 100%; height: 120px; margin: 12px 0;
+  border: 1px dashed rgba(255,215,0,0.2); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.02);
+}
+
+/* ====== HUD ====== */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none; z-index: 10;
+}
+#hud .score { color: #ffd700; font-size: 22px; text-shadow: 0 0 8px rgba(255,200,0,0.4); }
+#hud .wave { color: rgba(255,255,255,0.4); font-size: 12px; }
+#hud .lives { font-size: 16px; }
+
+/* 底部符咒参考栏 */
+#talisman-bar {
+  position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; pointer-events: none; z-index: 10;
+  max-width: 98vw;
+}
+#talisman-bar .t-item {
+  width: 33px; height: 38px; border-radius: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,215,0,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+#talisman-bar .t-item.highlight {
+  border-color: #ffd700; background: rgba(255,215,0,0.15);
+  box-shadow: 0 0 12px rgba(255,215,0,0.3); transform: scale(1.1);
+}
+#talisman-bar .t-item .t-glyph { font-size: 15px; color: #ffd700; }
+#talisman-bar .t-item .t-name { font-size: 7px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+
+/* 品级闪现 */
+#grade-flash {
+  position: fixed; top: 32%; left: 50%; transform: translate(-50%,-50%) scale(0);
+  font-size: 56px; font-weight: bold; pointer-events: none; z-index: 99; opacity: 0;
+}
+#grade-flash.show { transform: translate(-50%,-50%) scale(1); opacity: 1; transition: all 0.12s cubic-bezier(0.17,0.67,0.29,1.5); }
+#grade-flash.hide { transform: translate(-50%,-50%) scale(1.4); opacity: 0; transition: all 0.5s; }
+
+/* 引导提示 */
+#guide-toast {
+  position: fixed; top: 55%; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 12px; padding: 12px 20px;
+  color: #ffd700; font-size: 15px; text-align: center;
+  pointer-events: none; z-index: 50; opacity: 0; transition: opacity 0.4s;
+  line-height: 1.6; max-width: 300px;
+}
+#guide-toast.show { opacity: 1; }
+
+/* ===== 局内三选一Buff ===== */
+#buff-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(5,5,15,0.92);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'KaiTi','STKaiti',serif;
+}
+#buff-overlay.show { display: flex; }
+.buff-title { font-size: 30px; color: #ffd700; letter-spacing: 8px; text-shadow: 0 0 20px #ffd700; margin-bottom: 6px; }
+.buff-sub { font-size: 14px; color: #aaa; margin-bottom: 28px; letter-spacing: 2px; }
+#buff-cards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; padding: 0 16px; }
+.buff-card {
+  width: 130px; padding: 20px 12px; cursor: pointer;
+  background: linear-gradient(160deg, rgba(40,30,10,0.9), rgba(20,15,30,0.9));
+  border: 1px solid rgba(255,215,0,0.35); border-radius: 14px;
+  text-align: center; transition: all 0.18s; color: #eee;
+}
+.buff-card:hover, .buff-card:active { transform: translateY(-6px) scale(1.04); border-color: #ffd700; box-shadow: 0 0 24px rgba(255,215,0,0.4); }
+.buff-icon { font-size: 38px; margin-bottom: 10px; }
+.buff-name { font-size: 18px; color: #ffd700; margin-bottom: 8px; letter-spacing: 1px; }
+.buff-desc { font-size: 12px; color: #bbb; line-height: 1.5; }
+
+/* ===== 升级工坊 ===== */
+#workshop {
+  position: fixed; inset: 0; z-index: 90; display: none;
+  background: rgba(8,8,18,0.97); overflow-y: auto;
+  font-family: 'KaiTi','STKaiti',serif; color: #eee;
+}
+#workshop.show { display: block; }
+.ws-header {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; background: rgba(15,12,25,0.98); border-bottom: 1px solid rgba(255,215,0,0.25);
+}
+.ws-title { font-size: 22px; color: #ffd700; letter-spacing: 3px; }
+.ws-wallet { font-size: 13px; color: #ccc; flex: 1; }
+.ws-wallet b { color: #ffd700; }
+.ws-close { font-size: 22px; color: #999; cursor: pointer; padding: 0 6px; }
+.ws-section-label { font-size: 15px; color: #ffd700; letter-spacing: 2px; padding: 16px 16px 8px; opacity: 0.85; }
+.ws-item {
+  display: flex; align-items: center; gap: 12px; margin: 8px 16px; padding: 12px;
+  background: rgba(30,25,40,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+}
+.ws-item.selected { border-color: #ffd700; background: rgba(60,50,20,0.5); box-shadow: 0 0 10px rgba(255,215,0,0.15); }
+.ws-item .glyph { font-size: 26px; width: 40px; text-align: center; color: #ffd700; }
+.ws-item .info { flex: 1; }
+.ws-item .info .nm { font-size: 16px; color: #fff; }
+.ws-item .info .sub { font-size: 11px; color: #999; margin-top: 3px; line-height: 1.4; }
+.ws-item .lv { font-size: 12px; color: #7fd; }
+.ws-btn {
+  padding: 8px 12px; font-size: 12px; cursor: pointer; border-radius: 8px;
+  background: linear-gradient(160deg,#5a3a10,#3a2510); border: 1px solid #ffd700; color: #ffd700;
+  font-family: inherit; white-space: nowrap;
+}
+.ws-btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: #555; color: #888; background: #222; }
+.ws-btn.fork { border-color: #aa66ff; color: #cc99ff; background: linear-gradient(160deg,#3a1a5a,#25103a); }
+
+/* ===== 进化分叉弹窗 ===== */
+#fork-modal {
+  position: fixed; inset: 0; z-index: 95; display: none;
+  background: rgba(5,5,15,0.94); align-items: center; justify-content: center;
+  font-family: 'KaiTi','STKaiti',serif;
+}
+#fork-modal.show { display: flex; }
+.fork-box { width: 90%; max-width: 460px; background: rgba(20,16,30,0.98); border: 1px solid rgba(170,102,255,0.4); border-radius: 16px; padding: 22px; text-align: center; }
+.fork-title { font-size: 24px; color: #cc99ff; letter-spacing: 3px; margin-bottom: 6px; }
+.fork-hint { font-size: 12px; color: #999; margin-bottom: 18px; line-height: 1.5; }
+.fork-options { display: flex; gap: 12px; }
+.fork-opt { flex: 1; padding: 16px 10px; cursor: pointer; background: rgba(40,30,55,0.7); border: 1px solid rgba(170,102,255,0.3); border-radius: 12px; transition: all 0.15s; }
+.fork-opt:hover, .fork-opt:active { border-color: #cc99ff; box-shadow: 0 0 18px rgba(170,102,255,0.4); transform: translateY(-4px); }
+.fork-opt .tag { font-size: 13px; color: #aa88dd; letter-spacing: 2px; }
+.fork-opt .fn { font-size: 18px; color: #fff; margin: 8px 0; }
+.fork-opt .fd { font-size: 11px; color: #bbb; line-height: 1.5; }
+.fork-cancel { margin-top: 16px; font-size: 13px; color: #777; cursor: pointer; }
+
+/* ===== 标题菜单 ===== */
+#title-menu {
+  position: fixed; inset: 0; z-index: 70; display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, rgba(30,20,10,0.6), rgba(5,5,15,0.95));
+  font-family: 'KaiTi','STKaiti',serif;
+}
+#title-menu.show { display: flex; }
+.tm-name { font-size: 40px; color: #ffd700; letter-spacing: 6px; text-shadow: 0 0 30px rgba(255,215,0,0.6); margin-bottom: 10px; }
+.tm-wallet { font-size: 14px; color: #ccc; margin-bottom: 36px; }
+.tm-wallet b { color: #ffd700; }
+.tm-btn {
+  width: 220px; margin: 8px 0; padding: 14px; font-size: 18px; cursor: pointer;
+  font-family: inherit; letter-spacing: 3px; border-radius: 12px;
+  background: rgba(30,25,40,0.7); border: 1px solid rgba(255,215,0,0.4); color: #eee; transition: all 0.15s;
+}
+.tm-btn:hover, .tm-btn:active { border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.3); }
+.tm-btn.primary { background: linear-gradient(160deg,#5a3a10,#3a2510); color: #ffd700; border-color: #ffd700; }
+.tm-stats { margin-top: 24px; font-size: 12px; color: #888; line-height: 1.8; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div class="score" id="score-val">0</div>
+  <div class="wave" id="wave-val">第 1 波</div>
+  <div class="lives" id="lives-val">❤️❤️❤️</div>
+</div>
+
+<div id="boss-hp-bar" style="display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);width:70%;max-width:320px;z-index:40;text-align:center;">
+  <div style="font-size:11px;color:#ff6666;margin-bottom:2px;font-family:'KaiTi',serif;">百鬼王</div>
+  <div style="background:rgba(0,0,0,0.6);border:1px solid rgba(204,34,34,0.5);border-radius:4px;height:8px;overflow:hidden;">
+    <div id="boss-hp-fill" style="width:100%;height:100%;background:linear-gradient(90deg,#cc2222,#ff4444);transition:width 0.2s;border-radius:3px;"></div>
+  </div>
+</div>
+
+<div id="wave-announce" style="position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);z-index:60;pointer-events:none;opacity:0;transition:opacity 0.3s;font-family:'KaiTi','STKaiti',serif;font-size:32px;font-weight:bold;text-align:center;text-shadow:0 0 30px currentColor,0 0 60px currentColor;"></div>
+
+<div id="talisman-bar">
+  <div class="t-item" data-t="横斩符"><span class="t-glyph">一</span><span class="t-name">横斩</span></div>
+  <div class="t-item" data-t="竖劈符"><span class="t-glyph">丨</span><span class="t-name">竖劈</span></div>
+  <div class="t-item" data-t="斜斩符"><span class="t-glyph">╲</span><span class="t-name">斜斩</span></div>
+  <div class="t-item" data-t="圆封符"><span class="t-glyph">○</span><span class="t-name">圆封</span></div>
+  <div class="t-item" data-t="三角镇"><span class="t-glyph">△</span><span class="t-name">三角</span></div>
+  <div class="t-item" data-t="雷符"><span class="t-glyph">⚡</span><span class="t-name">雷符</span></div>
+  <div class="t-item" data-t="火符"><span class="t-glyph">火</span><span class="t-name">火符</span></div>
+  <div class="t-item" data-t="冰符"><span class="t-glyph">冰</span><span class="t-name">冰符</span></div>
+  <div class="t-item" data-t="螺旋符"><span class="t-glyph">旋</span><span class="t-name">螺旋</span></div>
+  <div class="t-item" data-t="敕令"><span class="t-glyph">敕</span><span class="t-name">敕令</span></div>
+</div>
+
+<div id="grade-flash"></div>
+<div id="guide-toast"></div>
+
+<!-- 局内已选buff图标 -->
+<div id="run-buffs" style="position:fixed;top:34px;right:8px;z-index:35;font-size:16px;display:flex;gap:3px;opacity:0.85;"></div>
+
+<!-- 局内三选一Buff -->
+<div id="buff-overlay">
+  <div class="buff-title">择 一 而 行</div>
+  <div class="buff-sub">此局之内，笔力增其一</div>
+  <div id="buff-cards"></div>
+</div>
+
+<!-- 升级工坊 -->
+<div id="workshop">
+  <div class="ws-header">
+    <span class="ws-title">升级工坊</span>
+    <span class="ws-wallet">魂币 <b id="ws-coin">0</b> · 墨精 <b id="ws-ink">0</b></span>
+    <span class="ws-close" onclick="closeWorkshop()">✕</span>
+  </div>
+  <div class="ws-section-label">十道符箓 · 升级与进化</div>
+  <div id="ws-talismans"></div>
+  <div class="ws-section-label">钟馗装备</div>
+  <div id="ws-equip"></div>
+  <div class="ws-section-label">钟馗法相 · 皮肤</div>
+  <div id="ws-skins"></div>
+</div>
+
+<!-- 进化分叉选择弹窗 -->
+<div id="fork-modal">
+  <div class="fork-box">
+    <div class="fork-title" id="fork-title">进化 · 择路</div>
+    <div class="fork-hint">此择不可逆。A偏群攻控制，B偏爆发单体。</div>
+    <div class="fork-options">
+      <div class="fork-opt" id="fork-A" onclick="confirmFork('A')"></div>
+      <div class="fork-opt" id="fork-B" onclick="confirmFork('B')"></div>
+    </div>
+    <div class="fork-cancel" onclick="closeFork()">再想想</div>
+  </div>
+</div>
+
+<!-- 标题菜单（开始/工坊） -->
+<div id="title-menu">
+  <div class="tm-name">钟馗 · 一笔镇妖</div>
+  <div class="tm-wallet">魂币 <b id="tm-coin">0</b> · 墨精 <b id="tm-ink">0</b></div>
+  <button class="tm-btn primary" onclick="enterTutorial()">⚔️ 开始镇妖</button>
+  <button class="tm-btn" onclick="openWorkshop()">📜 升级工坊</button>
+  <button class="tm-btn" onclick="unlockShareSkin()">🔗 分享传世</button>
+  <div class="tm-stats" id="tm-stats"></div>
+</div>
+
+<!-- ====== 新手教程：钟馗叙事 ====== -->
+<div id="tutorial" class="hidden">
+
+  <!-- 第一幕：死 -->
+  <div class="step active" data-step="0">
+    <div class="step-title">序 · 死</div>
+    <div class="art-placeholder">【美术占位】钟馗撞阶图：白衣书生俯身撞向白玉台阶，血溅，手中握笔。水墨风，暗色调。见 ART_REQUIREMENTS.md #TUT-01</div>
+    <div class="narr">
+      大唐。终南山下。<br>
+      你叫钟馗。<br><br>
+      十年寒窗，一笔文章惊长安。<br>
+      殿试之日，天子亲点——<br><br>
+      然后看见了你的脸。<br><br>
+      <span class="red">「貌丑，不可为状元。」</span><br><br>
+      你笑了。<br>
+      笑完，一头撞死在金銮殿的白玉阶上。<br>
+      血溅三尺。<br><br>
+      <span class="dim">手里还攥着那支笔。</span>
+    </div>
+    <button class="btn-next" onclick="nextStep()">……</button>
+  </div>
+
+  <!-- 第二幕：醒 -->
+  <div class="step" data-step="1">
+    <div class="step-title">壹 · 醒</div>
+    <div class="art-placeholder">【美术占位】酆都城门裂开：巨大石门从中间崩裂，绿光从缝隙涌出，万鬼剪影。见 ART_REQUIREMENTS.md #TUT-02</div>
+    <div class="narr">
+      三百年。<br>
+      你在酆都最深处，睡了三百年。<br><br>
+      今夜，城门裂了。<br>
+      <span class="em">万鬼倾巢。人间将倾。</span><br><br>
+      判官翻开生死簿，<br>
+      念了一个名字。<br><br>
+      <span class="big">「钟馗。」</span><br>
+      你睁开眼。
+    </div>
+    <button class="btn-next" onclick="nextStep()">……</button>
+  </div>
+
+  <!-- 第三幕：笔（操作教学） -->
+  <div class="step" data-step="2">
+    <div class="step-title">贰 · 笔</div>
+    <div class="narr">
+      手里，还是那支笔。<br>
+      三百年了，墨没干。<br><br>
+      只不过这一次——<br>
+      笔落，不是文章。<br><br>
+      <span class="em big">是符。是令。是斩。</span>
+      <hr>
+      <span class="dim">
+        ▸ 在屏幕上用手指（或鼠标）画<br>
+        ▸ 屏幕就是你的符纸<br>
+        ▸ 画完<b style="color:#fff">抬手</b>的瞬间，符成，法出<br>
+        ▸ 不用画在鬼身上——画在哪都行<br>
+        &nbsp;&nbsp;激活后以笔画中心为圆心，范围杀伤
+      </span>
+    </div>
+    <div class="art-placeholder">【美术占位】判官笔特写：一支古笔，笔尖金光流转，笔杆刻有符文。见 ART_REQUIREMENTS.md #TUT-03</div>
+    <button class="btn-next" onclick="nextStep()">六道封禁</button>
+  </div>
+
+  <!-- 第四幕：符（形状教学） -->
+  <div class="step" data-step="3">
+    <div class="step-title">叁 · 符</div>
+    <div class="narr">
+      十道封禁，笔笔不同。<br>
+      <span class="dim">记住形状，鬼来即画。先记前六道，余下四道战中自悟。</span>
+    </div>
+    <div class="shape-grid">
+      <div class="shape-card"><div class="glyph">一</div><div class="name">横斩符</div><div class="hint">从左到右一横</div></div>
+      <div class="shape-card"><div class="glyph">丨</div><div class="name">竖劈符</div><div class="hint">从上到下一竖</div></div>
+      <div class="shape-card"><div class="glyph">╲</div><div class="name">斜斩符</div><div class="hint">对角线一撇</div></div>
+      <div class="shape-card"><div class="glyph">○</div><div class="name">圆封符</div><div class="hint">画个圈（不用很圆）</div></div>
+      <div class="shape-card"><div class="glyph">△</div><div class="name">三角镇</div><div class="hint">画个三角（不用闭合）</div></div>
+      <div class="shape-card"><div class="glyph">⚡</div><div class="name">雷符</div><div class="hint">画Z字/闪电形</div></div>
+      <div class="shape-card"><div class="glyph">火</div><div class="name">火符</div><div class="hint">自下而上画火苗</div></div>
+      <div class="shape-card"><div class="glyph">冰</div><div class="name">冰符</div><div class="hint">画十字/星形·全场减速</div></div>
+      <div class="shape-card"><div class="glyph">旋</div><div class="name">螺旋符</div><div class="hint">由内向外绕圈·聚鬼</div></div>
+      <div class="shape-card"><div class="glyph">敕</div><div class="name">敕令</div><div class="hint">画大叉·全屏诛邪</div></div>
+    </div>
+    <div class="narr">
+      <span class="dim">
+        画的过程中笔画会<span class="em">发金光</span>——越亮越对。<br>
+        底部参考栏会实时高亮你正在画的符。<br>
+        画错不扣血。但鬼不等你。
+      </span>
+    </div>
+    <button class="btn-next" onclick="nextStep()">最后一件事</button>
+  </div>
+
+  <!-- 第五幕：战（弱点+开始） -->
+  <div class="step" data-step="4">
+    <div class="step-title">肆 · 战</div>
+    <div class="narr">
+      鬼怕什么，<span class="em">写在它头上</span>。<br><br>
+      每只鬼头顶有一个金色小字——<br>
+      那是它的弱点符。画对了，<span class="em">伤害翻倍</span>。<br><br>
+      画得越准，品级越高：<br>
+      <span style="color:#ffd700">金</span> &gt;
+      <span style="color:#cc44ff">紫</span> &gt;
+      <span style="color:#4488ff">蓝</span> &gt;
+      <span style="color:#ccc">白</span><br><br>
+      金色触发<span class="em">慢动作</span>。超爽。<br>
+      连续杀鬼触发<span class="red">连斩</span>。更爽。<br><br>
+      八波鬼潮之后——<br>
+      <span class="red big">百鬼王</span>会来。<br>
+      它头顶的「⚡」，是它唯一的弱点。<br><br>
+      <hr>
+      <span class="dim">
+        三百年前，他们夺了你的状元。<br>
+        三百年后——<br>
+      </span>
+      <span class="em big">没人能挡你的笔。</span>
+    </div>
+    <button class="btn-next" onclick="startGame()">⚔️ 落笔</button>
+  </div>
+
+  <div class="dots">
+    <span class="active"></span><span></span><span></span><span></span><span></span>
+  </div>
+  <button class="btn-skip" onclick="startGame()">跳过教程，直接开打</button>
+</div>
+
+<script>
+// ============================================================
+// 《钟馗 · 一笔镇妖》v6
+// 加速节奏 + 8波鬼潮 + 百鬼王Boss + 胜利画面
+// ============================================================
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, DPR;
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ==================== 教程控制 ====================
+let tutorialStep = 0;
+let gameStarted = false;
+
+function nextStep() {
+  tutorialStep++;
+  document.querySelectorAll('#tutorial .step').forEach(s => s.classList.remove('active'));
+  const el = document.querySelector(`#tutorial .step[data-step="${tutorialStep}"]`);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('#tutorial .dots span').forEach((d, i) => {
+    d.classList.toggle('active', i === tutorialStep);
+  });
+}
+
+function startGame() {
+  document.getElementById('tutorial').classList.add('hidden');
+  document.getElementById('title-menu').classList.remove('show');
+  gameStarted = true;
+  // 重置局内状态 + 应用装备
+  score=0;wave=0;combo=0;
+  ghosts=[];particles=[];floatTexts=[];activations=[];
+  waveSpawned=0;
+  boss=null;bossState='none';bossSummonT=0;bossChargeT=0;
+  currentScene=0;ambientP=[];sceneFade=1;lastSceneName=SCENES[0].name;
+  runBuffs={dmg:1,charge:1,range:1,comboWindow:2500,lifesteal:false,goldBonus:0,activateCount:0,doubleEvery:false};
+  runEarn={coin:0,ink:0};runBuffsChosen=[];waveLifestealUsed=false;runBanked=false;
+  applyEquipAtStart();
+  state = 'playing';
+  waveDelay = 2000;
+  guideMode = true;
+  guideKillCount = 0;
+  document.getElementById('score-val').textContent='0';
+  document.getElementById('wave-val').textContent='第 1 波';
+  document.getElementById('boss-hp-bar').style.display = 'none';
+  showToast('它来了。<br>画一横 <b style="color:#ffd700">「一」</b>，斩了它。', 4000);
+}
+
+// ==================== 音效 ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playBrush(intensity) {
+  ensureAudio();
+  const dur = 0.05;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1) * 0.02 * intensity * (1-i/data.length);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const f = audioCtx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=2500+intensity*2000; f.Q.value=0.7;
+  src.connect(f).connect(audioCtx.destination); src.start();
+}
+
+function playCharge(level) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+  osc.type='sine'; osc.frequency.value = 220 + level*500;
+  g.gain.setValueAtTime(0.012 + level*0.025, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.08);
+  osc.connect(g).connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.08);
+}
+
+function playActivate(grade) {
+  ensureAudio(); const t = audioCtx.currentTime;
+  const o1=audioCtx.createOscillator(), g1=audioCtx.createGain();
+  o1.type='sine'; o1.frequency.setValueAtTime(grade>=3?160:110,t); o1.frequency.exponentialRampToValueAtTime(35,t+0.35);
+  g1.gain.setValueAtTime(grade>=3?0.35:0.2,t); g1.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+  o1.connect(g1).connect(audioCtx.destination); o1.start(t); o1.stop(t+0.4);
+  const o2=audioCtx.createOscillator(), g2=audioCtx.createGain();
+  o2.type='triangle'; o2.frequency.setValueAtTime(grade>=3?1400:900,t); o2.frequency.exponentialRampToValueAtTime(150,t+0.2);
+  g2.gain.setValueAtTime(0.12,t); g2.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+  o2.connect(g2).connect(audioCtx.destination); o2.start(t); o2.stop(t+0.22);
+}
+
+function playFail() {
+  ensureAudio(); const t=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.value=70;
+  g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+  o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.12);
+}
+
+function playKill() {
+  ensureAudio(); const t=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='square'; o.frequency.setValueAtTime(700,t); o.frequency.exponentialRampToValueAtTime(80,t+0.08);
+  g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
+  o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.1);
+}
+
+// ==================== Toast ====================
+let toastTimer = null;
+function showToast(html, duration=3000) {
+  const el = document.getElementById('guide-toast');
+  el.innerHTML = html;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ============================================================
+// 符咒识别系统 v5 — 修复圆/三角/雷符
+// 策略：$1识别器 + 形状特征分类器，OR逻辑
+// ============================================================
+
+const TEMPLATES = {
+  '横斩符': { gen:()=>Array.from({length:20},(_,i)=>({x:i*10,y:0})), color:'#ffd700', range:110, glyph:'一', dmg:2 },
+  '竖劈符': { gen:()=>Array.from({length:20},(_,i)=>({x:0,y:i*10})), color:'#ffd700', range:110, glyph:'丨', dmg:2 },
+  '斜斩符': { gen:()=>Array.from({length:20},(_,i)=>({x:i*8,y:i*8})), color:'#ffaa00', range:100, glyph:'╲', dmg:2 },
+  '圆封符': { gen:()=>Array.from({length:30},(_,i)=>{const a=(i/30)*6.28;return{x:50+Math.cos(a)*50,y:50+Math.sin(a)*50};}), color:'#88ddff', range:130, glyph:'○', dmg:1, special:'freeze' },
+  '三角镇': { gen:()=>{const p=[];for(let i=0;i<10;i++)p.push({x:50+i*5,y:100-i*10});for(let i=0;i<10;i++)p.push({x:100-i*10,y:0});for(let i=0;i<10;i++)p.push({x:i*5,y:i*10});return p;}, color:'#ff6600', range:100, glyph:'△', dmg:2, special:'burn' },
+  '雷符':   { gen:()=>[{x:30,y:0},{x:60,y:35},{x:20,y:60},{x:65,y:95},{x:30,y:120},{x:70,y:150}], color:'#aaeeff', range:150, glyph:'⚡', dmg:3, special:'chain' },
+  '火符':   { gen:()=>{const p=[];for(let i=0;i<24;i++){p.push({x:50+Math.sin(i*0.9)*18, y:140-i*6});}return p;}, color:'#ff5522', range:120, glyph:'火', dmg:2, special:'burn' },
+  '冰符':   { gen:()=>{const p=[];p.push({x:50,y:0},{x:50,y:100});p.push({x:50,y:50},{x:0,y:50},{x:100,y:50});p.push({x:50,y:50},{x:15,y:15},{x:85,y:85});return p;}, color:'#66ccff', range:140, glyph:'冰', dmg:1, special:'globalSlow' },
+  '螺旋符': { gen:()=>{const p=[];for(let i=0;i<40;i++){const a=i*0.55;const r=4+i*1.1;p.push({x:60+Math.cos(a)*r,y:60+Math.sin(a)*r});}return p;}, color:'#cc88ff', range:140, glyph:'旋', dmg:2, special:'pull' },
+  '敕令':   { gen:()=>{const p=[];for(let i=0;i<12;i++)p.push({x:i*9,y:i*9});for(let i=0;i<12;i++)p.push({x:100-i*9,y:i*9});return p;}, color:'#ffd700', range:240, glyph:'敕', dmg:4, special:'fullscreen' },
+};
+
+const TPL_LIST = Object.entries(TEMPLATES).map(([name, cfg]) => ({ name, ...cfg, points: normalizeStroke(cfg.gen()) }));
+
+function normalizeStroke(pts) {
+  const r = resample(pts, 32);
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const p of r){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}
+  const s=Math.max(maxX-minX,maxY-minY)||1;
+  return r.map(p=>({x:(p.x-minX)/s-0.5, y:(p.y-minY)/s-0.5}));
+}
+
+function resample(pts,n){
+  if(pts.length<2)return pts;
+  let tl=0;for(let i=1;i<pts.length;i++)tl+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+  const iv=tl/(n-1),out=[{...pts[0]}];let D=0;const c=pts.map(p=>({...p}));
+  for(let i=1;i<c.length;i++){const d=Math.hypot(c[i].x-c[i-1].x,c[i].y-c[i-1].y);
+    if(D+d>=iv){const t=(iv-D)/d;const np={x:c[i-1].x+t*(c[i].x-c[i-1].x),y:c[i-1].y+t*(c[i].y-c[i-1].y)};out.push(np);c.splice(i,0,np);D=0;}else D+=d;}
+  while(out.length<n)out.push({...c[c.length-1]});return out.slice(0,n);
+}
+
+// ---------- 形状特征分类器 ----------
+
+// 计算笔画的拐点（方向突变 > threshold度）
+function findCorners(pts, thresholdDeg=45) {
+  if (pts.length < 5) return 0;
+  const resampled = resample(pts.map(p=>({x:p.x,y:p.y})), Math.min(pts.length, 40));
+  let corners = 0;
+  for (let i = 2; i < resampled.length - 2; i++) {
+    const v1x = resampled[i].x - resampled[i-2].x;
+    const v1y = resampled[i].y - resampled[i-2].y;
+    const v2x = resampled[i+2].x - resampled[i].x;
+    const v2y = resampled[i+2].y - resampled[i].y;
+    const dot = v1x*v2x + v1y*v2y;
+    const m1 = Math.hypot(v1x,v1y), m2 = Math.hypot(v2x,v2y);
+    if (m1 < 1 || m2 < 1) continue;
+    const cos = Math.max(-1, Math.min(1, dot/(m1*m2)));
+    const angle = Math.acos(cos) * 180/Math.PI;
+    if (angle > thresholdDeg) corners++;
+  }
+  return corners;
+}
+
+// 计算方向反转次数（用于Z字/闪电检测）
+function countReversals(pts) {
+  if (pts.length < 6) return 0;
+  const resampled = resample(pts.map(p=>({x:p.x,y:p.y})), Math.min(pts.length, 30));
+  let reversals = 0;
+  let prevDx = 0;
+  for (let i = 2; i < resampled.length; i++) {
+    const dx = resampled[i].x - resampled[i-2].x;
+    if (Math.abs(dx) > 2) {
+      if (prevDx !== 0 && Math.sign(dx) !== Math.sign(prevDx)) reversals++;
+      prevDx = dx;
+    }
+  }
+  return reversals;
+}
+
+// 圆形检测：闭合 + 宽高比接近1 + 少拐点 + 足够长
+function detectCircle(pts) {
+  if (pts.length < 12) return 0;
+  const first = pts[0], last = pts[pts.length-1];
+  const closureDist = Math.hypot(last.x-first.x, last.y-first.y);
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const p of pts){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}
+  const w=maxX-minX, h=maxY-minY;
+  const size = Math.max(w,h);
+  if(size < 25) return 0;
+
+  const aspect = Math.min(w,h)/Math.max(w,h);
+  const closureRatio = closureDist / size;
+  const corners = findCorners(pts, 60); // 圆应该少拐点
+
+  // 计算周长
+  let perim = 0;
+  for(let i=1;i<pts.length;i++) perim += Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+  const idealPerim = Math.PI * size; // 理想圆周长
+  const perimRatio = perim / idealPerim; // 接近1越好
+
+  let score = 0;
+  if (closureRatio < 0.4) score += 0.30;  // 闭合（允许不完美闭合）
+  else if (closureRatio < 0.6) score += 0.15;
+  if (aspect > 0.5) score += 0.25;         // 宽高比
+  else if (aspect > 0.35) score += 0.12;
+  if (corners <= 3) score += 0.20;         // 少拐点=平滑曲线
+  if (perimRatio > 0.7 && perimRatio < 1.8) score += 0.15; // 周长合理
+  if (pts.length > 18) score += 0.10;      // 足够多的点=画了足够长
+
+  return Math.min(1, score);
+}
+
+// 三角检测：2-4个拐点 + 大致闭合 + 有面积
+function detectTriangle(pts) {
+  if (pts.length < 8) return 0;
+  const first = pts[0], last = pts[pts.length-1];
+  const closureDist = Math.hypot(last.x-first.x, last.y-first.y);
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const p of pts){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}
+  const w=maxX-minX, h=maxY-minY;
+  const size = Math.max(w,h);
+  if(size < 25) return 0;
+
+  const closureRatio = closureDist / size;
+  const corners = findCorners(pts, 35); // 三角用较低阈值检测拐点
+
+  let score = 0;
+  if (corners >= 2 && corners <= 5) score += 0.40;  // 2-5个拐点（3最理想，允许误差）
+  else if (corners === 1 || corners === 6) score += 0.20;
+  if (closureRatio < 0.45) score += 0.30;  // 大致闭合（不要求完美）
+  else if (closureRatio < 0.7) score += 0.15;
+  if (size > 30) score += 0.15;            // 有足够大小
+  if (w > 15 && h > 15) score += 0.15;     // 有面积（不是线）
+
+  return Math.min(1, score);
+}
+
+// 闪电/Z字检测：2+方向反转 + 整体有纵向跨度
+function detectLightning(pts) {
+  if (pts.length < 6) return 0;
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const p of pts){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}
+  const w=maxX-minX, h=maxY-minY;
+  const size = Math.max(w,h);
+  if(size < 25) return 0;
+
+  const reversals = countReversals(pts);
+  const corners = findCorners(pts, 40);
+
+  let score = 0;
+  if (reversals >= 2) score += 0.40;       // 核心：至少2次方向反转
+  else if (reversals >= 1) score += 0.20;
+  if (corners >= 2) score += 0.25;         // 有明确拐点
+  if (h > w * 0.6) score += 0.20;          // 纵向跨度（闪电通常竖着画）
+  if (size > 35) score += 0.15;            // 足够大
+
+  return Math.min(1, score);
+}
+
+// 螺旋检测：累计转角大（>2圈）且半径整体增长 —— 区别于圆（仅~360°且闭合）
+function detectSpiral(pts) {
+  if (pts.length < 14) return 0;
+  const rs = resample(pts.map(p=>({x:p.x,y:p.y})), Math.min(pts.length, 48));
+  let totalTurn = 0;
+  for (let i = 2; i < rs.length; i++) {
+    const a1 = Math.atan2(rs[i-1].y-rs[i-2].y, rs[i-1].x-rs[i-2].x);
+    const a2 = Math.atan2(rs[i].y-rs[i-1].y, rs[i].x-rs[i-1].x);
+    let da = a2 - a1;
+    while (da > Math.PI) da -= 2*Math.PI;
+    while (da < -Math.PI) da += 2*Math.PI;
+    totalTurn += Math.abs(da);
+  }
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const p of pts){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}
+  const w=maxX-minX, h=maxY-minY, size=Math.max(w,h);
+  if (size < 30) return 0;
+  const aspect = Math.min(w,h)/Math.max(w,h);
+  const turns = totalTurn / (2*Math.PI);
+
+  let score = 0;
+  if (turns >= 2.0) score += 0.45;        // 核心：至少2圈
+  else if (turns >= 1.5) score += 0.25;
+  if (aspect > 0.45) score += 0.20;       // 大致方形包围盒
+  if (size > 40) score += 0.15;           // 足够大
+  if (pts.length > 20) score += 0.15;     // 足够长的笔画
+  if (turns >= 2.5) score += 0.10;        // 更多圈数加分
+  return Math.min(1, score);
+}
+
+// 火焰检测：纵向上升 + 1~2次横向摆动（比闪电少反转，比斜线多波动）
+function detectFlame(pts) {
+  if (pts.length < 8) return 0;
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const p of pts){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y);}
+  const w=maxX-minX, h=maxY-minY, size=Math.max(w,h);
+  if (size < 30) return 0;
+  const first=pts[0], last=pts[pts.length-1];
+  const rises = (first.y - last.y) > h*0.4;   // 整体向上
+  const reversals = countReversals(pts);
+  const corners = findCorners(pts, 40);
+
+  let score = 0;
+  if (rises) score += 0.30;                  // 上升
+  if (h > w*1.1) score += 0.20;              // 纵向为主
+  if (reversals >= 1 && reversals <= 3) score += 0.25;  // 适度摆动
+  else if (reversals === 0) score += 0.05;
+  if (corners >= 1 && corners <= 4) score += 0.15;
+  if (size > 35) score += 0.10;
+  return Math.min(1, score);
+}
+
+// ---------- 主识别函数（$1 + 分类器 OR逻辑） ----------
+function recognizeStroke(pts) {
+  if(pts.length < 8) return null;
+
+  // === $1 识别器 ===
+  const norm = normalizeStroke(pts.map(p=>({x:p.x,y:p.y})));
+  let best=null, bestDist=1e9;
+  for(const tpl of TPL_LIST){
+    let d=0;
+    for(let i=0;i<32;i++) d+=Math.hypot(norm[i].x-tpl.points[i].x, norm[i].y-tpl.points[i].y);
+    d/=32;
+    if(d<bestDist){bestDist=d;best=tpl;}
+  }
+  const $1score = Math.max(0, 1 - bestDist * 2.5); // 放宽：2.5（原3.2）
+
+  // === 形状分类器 ===
+  const circleScore = detectCircle(pts);
+  const triScore = detectTriangle(pts);
+  const lightningScore = detectLightning(pts);
+  const spiralScore = detectSpiral(pts);
+  const flameScore = detectFlame(pts);
+
+  // === OR逻辑：取最佳匹配 ===
+  let result = null;
+  let bestScore = 0;
+
+  // $1结果
+  if ($1score >= 0.28) { // 放宽阈值：0.28（原0.35）
+    result = { name: best.name, color: best.color, range: best.range, glyph: best.glyph, dmg: best.dmg, special: best.special, score: $1score };
+    bestScore = $1score;
+  }
+
+  // 圆形分类器覆盖
+  if (circleScore > 0.55 && circleScore > bestScore) {
+    const t = TEMPLATES['圆封符'];
+    result = { name:'圆封符', color:t.color, range:t.range, glyph:t.glyph, dmg:t.dmg, special:t.special, score: circleScore };
+    bestScore = circleScore;
+  }
+
+  // 三角分类器覆盖
+  if (triScore > 0.55 && triScore > bestScore) {
+    const t = TEMPLATES['三角镇'];
+    result = { name:'三角镇', color:t.color, range:t.range, glyph:t.glyph, dmg:t.dmg, special:t.special, score: triScore };
+    bestScore = triScore;
+  }
+
+  // 闪电分类器覆盖
+  if (lightningScore > 0.55 && lightningScore > bestScore) {
+    const t = TEMPLATES['雷符'];
+    result = { name:'雷符', color:t.color, range:t.range, glyph:t.glyph, dmg:t.dmg, special:t.special, score: lightningScore };
+    bestScore = lightningScore;
+  }
+
+  // 螺旋分类器覆盖（优先于圆：螺旋圈数多）
+  if (spiralScore > 0.6 && spiralScore > bestScore) {
+    const t = TEMPLATES['螺旋符'];
+    result = { name:'螺旋符', color:t.color, range:t.range, glyph:t.glyph, dmg:t.dmg, special:t.special, score: spiralScore };
+    bestScore = spiralScore;
+  }
+
+  // 火焰分类器覆盖
+  if (flameScore > 0.6 && flameScore > bestScore) {
+    const t = TEMPLATES['火符'];
+    result = { name:'火符', color:t.color, range:t.range, glyph:t.glyph, dmg:t.dmg, special:t.special, score: flameScore };
+    bestScore = flameScore;
+  }
+
+  if (!result) return null;
+
+  // 品级
+  const grade = result.score>=0.85?4 : result.score>=0.68?3 : result.score>=0.48?2 : 1;
+  return { ...result, grade };
+}
+
+// 实时匹配（画的过程中）
+function liveMatch(pts) {
+  if(pts.length<6) return {score:0, name:''};
+  const norm = normalizeStroke(pts.map(p=>({x:p.x,y:p.y})));
+  let best=null, bestDist=1e9;
+  for(const tpl of TPL_LIST){
+    let d=0; const n=Math.min(32,norm.length);
+    for(let i=0;i<n;i++){const ti=Math.floor(i*32/n);d+=Math.hypot(norm[i].x-tpl.points[ti].x,norm[i].y-tpl.points[ti].y);}
+    d/=n; if(d<bestDist){bestDist=d;best=tpl;}
+  }
+  let score = Math.max(0, Math.min(1, 1-bestDist*2.5));
+  let name = best ? best.name : '';
+
+  // 分类器也参与实时提示
+  const cs = detectCircle(pts);
+  const ts = detectTriangle(pts);
+  const ls = detectLightning(pts);
+  const ss = detectSpiral(pts);
+  const fs = detectFlame(pts);
+  if (cs > score && cs > 0.4) { score = cs; name = '圆封符'; }
+  if (ts > score && ts > 0.4) { score = ts; name = '三角镇'; }
+  if (ls > score && ls > 0.4) { score = ls; name = '雷符'; }
+  if (ss > score && ss > 0.45) { score = ss; name = '螺旋符'; }
+  if (fs > score && fs > 0.45) { score = fs; name = '火符'; }
+
+  return {score, name};
+}
+
+// ==================== 游戏状态 ====================
+let state = 'idle';
+let score=0, lives=3, maxLives=3, wave=0, combo=0, lastKillT=0;
+let ghosts=[], particles=[], floatTexts=[], activations=[];
+let gameTime=0, lastTime=Date.now();
+let shake={x:0,y:0,power:0};
+let slowmo={active:false,timer:0};
+let guideMode=false, guideKillCount=0;
+
+let drawing={active:false,points:[],brush:[],startTime:0,matchScore:0,matchName:'',charge:0,lastSnd:0,splash:[]};
+
+// ==================== 场景系统（5境） ====================
+// 波次→境：0-1酆都夜市 / 2-3奈何桥 / 4-5判官殿 / 6-7钟馗故里 / 8(boss)九幽深渊
+const SCENES=[
+  {id:'fengdu',  name:'酆都夜市', top:'#181838', bot:'#0a0a1a', ambient:'lantern', amb:'#ffaa44', decor:'market'},
+  {id:'naihe',   name:'奈何桥',   top:'#0e222b', bot:'#071012', ambient:'mist',    amb:'#8fb4c4', decor:'bridge'},
+  {id:'judge',   name:'判官殿',   top:'#281216', bot:'#0a0507', ambient:'incense', amb:'#d0aa80', decor:'hall'},
+  {id:'hometown',name:'钟馗故里', top:'#1e1a10', bot:'#0a0806', ambient:'firefly', amb:'#ccff66', decor:'village'},
+  {id:'abyss',   name:'九幽深渊', top:'#1c0c28', bot:'#050208', ambient:'ember',   amb:'#ff5533', decor:'void'},
+];
+let currentScene=0, sceneFade=0, lastSceneName='';
+let ambientP=[]; // 环境粒子
+function sceneForWave(w){ if(w>=8)return 4; return Math.min(3, Math.floor(w/2)); }
+function spawnAmbient(){
+  const sc=SCENES[currentScene];
+  const t=sc.ambient;
+  if(t==='lantern') ambientP.push({t,x:Math.random()*W,y:H+10,vx:(Math.random()-0.5)*0.2,vy:-0.3-Math.random()*0.3,r:3+Math.random()*3,a:0.5+Math.random()*0.4,ph:Math.random()*6.28});
+  else if(t==='mist') ambientP.push({t,x:-60,y:H*0.4+Math.random()*H*0.5,vx:0.3+Math.random()*0.4,vy:0,r:40+Math.random()*40,a:0.05+Math.random()*0.05,ph:Math.random()*6.28});
+  else if(t==='incense') ambientP.push({t,x:W*0.2+Math.random()*W*0.6,y:H*0.9,vx:0,vy:-0.5-Math.random()*0.4,r:2+Math.random()*2,a:0.3,ph:Math.random()*6.28});
+  else if(t==='firefly') ambientP.push({t,x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.5,r:1.5+Math.random()*1.5,a:Math.random(),ph:Math.random()*6.28});
+  else if(t==='ember') ambientP.push({t,x:Math.random()*W,y:H+5,vx:(Math.random()-0.5)*0.6,vy:-1-Math.random()*1.2,r:1.5+Math.random()*2,a:0.7,ph:Math.random()*6.28});
+}
+function updateAmbient(dt){
+  const sc=SCENES[currentScene];
+  if(Math.random()<0.3 && ambientP.length<60) spawnAmbient();
+  for(const p of ambientP){
+    p.ph+=0.05;
+    p.x+=p.vx*(dt/16); p.y+=p.vy*(dt/16);
+    if(p.t==='firefly'){p.vx+=(Math.random()-0.5)*0.1;p.vy+=(Math.random()-0.5)*0.1;p.a=0.3+Math.abs(Math.sin(p.ph))*0.6;}
+    if(p.t==='lantern')p.a=0.4+Math.abs(Math.sin(p.ph))*0.4;
+    if(p.t==='incense')p.x+=Math.sin(p.ph)*0.4;
+  }
+  ambientP=ambientP.filter(p=>p.y>-60&&p.y<H+60&&p.x>-80&&p.x<W+80);
+}
+function drawAmbient(){
+  const sc=SCENES[currentScene];
+  for(const p of ambientP){
+    ctx.save();ctx.globalAlpha=Math.max(0,p.a);
+    if(p.t==='mist'){ctx.fillStyle=sc.amb;ctx.globalAlpha=p.a;ctx.beginPath();ctx.ellipse(p.x,p.y,p.r,p.r*0.5,0,0,6.28);ctx.fill();}
+    else{ctx.fillStyle=sc.amb;ctx.shadowColor=sc.amb;ctx.shadowBlur=p.t==='firefly'?6:10;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.28);ctx.fill();}
+    ctx.restore();
+  }
+}
+function drawSceneDecor(sc){
+  ctx.save();ctx.globalAlpha=0.5;
+  const g=ctx.createLinearGradient(0,H*0.7,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.6)');
+  ctx.fillStyle=g;ctx.fillRect(0,H*0.7,W,H*0.3);
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  if(sc.decor==='market'){ // 夜市屋檐+灯笼串
+    for(let i=0;i<6;i++){const x=i*W/6;ctx.beginPath();ctx.moveTo(x,H);ctx.lineTo(x,H*0.82);ctx.lineTo(x+W/12,H*0.78);ctx.lineTo(x+W/6,H*0.82);ctx.lineTo(x+W/6,H);ctx.fill();}
+    ctx.fillStyle='rgba(255,150,60,0.25)';for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(W*0.1+i*W*0.11,H*0.72+Math.sin(i)*4,3,0,6.28);ctx.fill();}
+  } else if(sc.decor==='bridge'){ // 桥拱+河
+    ctx.beginPath();ctx.moveTo(0,H*0.9);ctx.quadraticCurveTo(W/2,H*0.72,W,H*0.9);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+    ctx.fillStyle='rgba(120,160,180,0.12)';ctx.fillRect(0,H*0.9,W,H*0.1);
+  } else if(sc.decor==='hall'){ // 殿柱
+    for(let i=0;i<4;i++){const x=W*0.15+i*W*0.23;ctx.fillRect(x,H*0.6,W*0.05,H*0.4);}
+    ctx.fillRect(0,H*0.6,W,H*0.04);
+  } else if(sc.decor==='village'){ // 屋舍+月
+    for(let i=0;i<5;i++){const x=i*W/5;ctx.fillRect(x,H*0.85,W/6,H*0.15);ctx.beginPath();ctx.moveTo(x-4,H*0.85);ctx.lineTo(x+W/12,H*0.78);ctx.lineTo(x+W/5+4,H*0.85);ctx.fill();}
+    ctx.fillStyle='rgba(255,240,200,0.2)';ctx.beginPath();ctx.arc(W*0.8,H*0.2,26,0,6.28);ctx.fill();
+  } else if(sc.decor==='void'){ // 深渊裂隙
+    ctx.strokeStyle='rgba(180,40,220,0.3)';ctx.lineWidth=2;
+    for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(Math.random()*W,H);ctx.lineTo(Math.random()*W,H*0.6);ctx.stroke();}
+  }
+  ctx.restore();
+}
+function setScene(idx){
+  if(idx===currentScene && lastSceneName!=='')return;
+  currentScene=idx; sceneFade=1; ambientP=[];
+  if(state==='playing'){ showWaveAnnounce('◈ '+SCENES[idx].name+' ◈', '#ffd700', 1600); }
+  lastSceneName=SCENES[idx].name;
+}
+
+// ==================== 进阶系统（meta） ====================
+// 符定义：6符，每符5级，L3分叉A/B
+const TALISMAN_DEFS={
+  '横斩符':{glyph:'一', base:{dmg:2,range:120},
+    A:{name:'横扫千军',desc:'范围×2 伤害×0.7 横扫一片',rangeMul:2.0,dmgMul:0.7},
+    B:{name:'一剑封喉',desc:'范围×0.5 伤害×3 30%暴击秒杀',rangeMul:0.5,dmgMul:3.0,crit:0.3}},
+  '竖劈符':{glyph:'丨', base:{dmg:2,range:110},
+    A:{name:'天崩',desc:'竖向冲击波柱 持续1.5s',dmgMul:1.3,zone:'column'},
+    B:{name:'地裂',desc:'地面裂缝 灼烧3s',dmgMul:1.2,zone:'dot'}},
+  '斜斩符':{glyph:'╲', base:{dmg:2,range:115},
+    A:{name:'双斩',desc:'同时两道镜像斜斩',dmgMul:0.8,double:true},
+    B:{name:'回旋',desc:'斩击飞去再飞回 命中两次',dmgMul:0.9,boomerang:true}},
+  '圆封符':{glyph:'○', base:{dmg:1,range:100,special:'freeze'},
+    A:{name:'冰封万里',desc:'冻结×3 范围×0.6',rangeMul:0.6,freezeMul:3},
+    B:{name:'吞噬之环',desc:'拉拽鬼向中心后爆炸',rangeMul:1.2,pull:true}},
+  '三角镇':{glyph:'△', base:{dmg:2,range:105,special:'burn'},
+    A:{name:'焚天',desc:'灼烧×3 蔓延邻近鬼',burnMul:3,spread:true},
+    B:{name:'镇魂印',desc:'三角区域定身2s',stun:2000}},
+  '雷符':{glyph:'⚡', base:{dmg:2,range:130},
+    A:{name:'连锁雷狱',desc:'弹跳8目标 每跳-20%',chain:8,dmgMul:0.6},
+    B:{name:'天罚',desc:'单体伤害×5 眩晕1s',dmgMul:5.0,stun:1000}},
+  '火符':{glyph:'火', base:{dmg:2,range:120,special:'burn'},
+    A:{name:'燎原',desc:'灼烧×3 蔓延邻近鬼 范围×1.3',burnMul:3,spread:true,rangeMul:1.3},
+    B:{name:'爆燃',desc:'瞬间高伤×2.5 灼烧缩短',dmgMul:2.5,burnMul:0.6}},
+  '冰符':{glyph:'冰', base:{dmg:1,range:140,special:'globalSlow'},
+    A:{name:'千里冰封',desc:'全场冻结1.2s 减速更长',freezeMul:2,globalFreeze:true},
+    B:{name:'霜爆',desc:'减速区爆炸 伤害×2',dmgMul:2,slowExplode:true}},
+  '螺旋符':{glyph:'旋', base:{dmg:2,range:140,special:'pull'},
+    A:{name:'万流归宗',desc:'强力拉拽至中心 范围×1.4',rangeMul:1.4,pull:true,pullStrong:true},
+    B:{name:'绞杀漩涡',desc:'拉拽+持续伤害 伤害×1.8',dmgMul:1.8,pull:true}},
+  '敕令':{glyph:'敕', base:{dmg:4,range:240,special:'fullscreen'},
+    A:{name:'万神朝宗',desc:'全屏伤害×1.5 附带眩晕',dmgMul:1.5,stun:1200},
+    B:{name:'诛邪',desc:'全屏伤害×2.2 对Boss额外×2',dmgMul:2.2,bossMul:2}},
+};
+const TALISMAN_ORDER=['横斩符','竖劈符','斜斩符','圆封符','三角镇','雷符','火符','冰符','螺旋符','敕令'];
+// 升级成本：L2魂币，L3墨精(分叉)，L4/L5墨精
+const UPGRADE_COST={2:{coin:50},3:{ink:10},4:{ink:15},5:{ink:25}};
+
+// 装备定义：4槽位×3阶
+const EQUIP_DEFS={
+  brush:{name:'判官笔',stat:'蓄力速度',tiers:['铁笔','银笔','金笔'],bonus:[0.10,0.20,0.35],cost:[100,300,800]},
+  robe:{name:'钟馗袍',stat:'生命',tiers:['布袍','铁甲袍','龙鳞袍'],bonus:[0,1,2],cost:[100,300,800]},
+  crown:{name:'乌纱冠',stat:'魂币加成',tiers:['无冠','银冠','金冠'],bonus:[0.10,0.20,0.35],cost:[100,300,800]},
+  charm:{name:'腰间佩',stat:'开局buff',tiers:['玉佩','灵佩','魂佩'],bonus:[1,1,2],cost:[100,300,800]},
+};
+
+// 局内buff池
+const BUFF_POOL=[
+  {id:'dmg',icon:'🖌️',name:'浓墨',desc:'符伤害 +25%'},
+  {id:'charge',icon:'⚡',name:'疾笔',desc:'蓄力速度 +20%'},
+  {id:'range',icon:'◎',name:'广符',desc:'激活范围 +20%'},
+  {id:'combo',icon:'🔗',name:'延斩',desc:'连斩窗口延长'},
+  {id:'lifesteal',icon:'🩸',name:'嗜血',desc:'杀怪15%回血'},
+  {id:'gold',icon:'✨',name:'金手',desc:'金品级更易触发'},
+  {id:'double',icon:'符',name:'双符',desc:'每3次激活追加一次'},
+  {id:'life',icon:'🛡️',name:'厚土',desc:'+1最大生命'},
+];
+
+// 持久化存档
+let meta={
+  coin:0, ink:0,
+  talismans:{}, // {name:{level:1, path:null/'A'/'B'}}
+  equip:{brush:0,robe:0,crown:0,charm:0}, // 0=未购，1/2/3=阶
+  skins:{unlocked:['default'],selected:'default'}, // 皮肤
+  totalKills:0, bestScore:0,
+};
+TALISMAN_ORDER.forEach(n=>meta.talismans[n]={level:1,path:null});
+
+function loadMeta(){
+  try{
+    const s=localStorage.getItem('zkrush_meta');
+    if(s){const d=JSON.parse(s);Object.assign(meta,d);
+      TALISMAN_ORDER.forEach(n=>{if(!meta.talismans[n])meta.talismans[n]={level:1,path:null};});
+      if(!meta.skins)meta.skins={unlocked:['default'],selected:'default'};
+      if(!meta.skins.unlocked)meta.skins.unlocked=['default'];
+      if(!meta.skins.unlocked.includes('default'))meta.skins.unlocked.push('default');
+    }
+  }catch(e){}
+}
+function saveMeta(){try{localStorage.setItem('zkrush_meta',JSON.stringify(meta));}catch(e){}}
+loadMeta();
+
+// ==================== 皮肤系统 ====================
+// trail=墨迹主色 glow=蓄力/笔尖光 glyph=激活符字色
+const SKINS={
+  default:{name:'素墨钟馗',desc:'一袭白衣，素笔朱砂。',unlock:{type:'free'},trail:'#1a1a2e',glow:'#ffd700',glyph:'#ffd700'},
+  judge:{name:'判官朱砂',desc:'朱笔一勾，生死簿上除名。',unlock:{type:'score',val:800},trail:'#3a0d0d',glow:'#ff4444',glyph:'#ff5544'},
+  flame:{name:'业火钟馗',desc:'斩鬼百只，业火缠身。',unlock:{type:'kills',val:100},trail:'#2a1206',glow:'#ff7722',glyph:'#ff8833'},
+  ice:{name:'玄冰钟馗',desc:'霜封二百鬼，寒气彻骨。',unlock:{type:'kills',val:200},trail:'#0d1f2a',glow:'#66ccff',glyph:'#88ddff'},
+  gold:{name:'金身钟馗',desc:'金身不坏，万邪不侵。',unlock:{type:'score',val:2500},trail:'#2a2206',glow:'#ffdd33',glyph:'#ffee66'},
+  shadow:{name:'幽冥钟馗',desc:'身入幽冥，与鬼同途。',unlock:{type:'kills',val:600},trail:'#1a0d2a',glow:'#cc66ff',glyph:'#dd88ff'},
+  share:{name:'传世钟馗',desc:'声名传世，万人共书。',unlock:{type:'share'},trail:'#0d2a1a',glow:'#44dd88',glyph:'#66ffaa'},
+};
+function currentSkin(){ return SKINS[meta.skins.selected]||SKINS.default; }
+function isSkinUnlocked(id){ return meta.skins.unlocked.includes(id); }
+function skinUnlockHint(sk){
+  const u=sk.unlock;
+  if(u.type==='free')return '初始拥有';
+  if(u.type==='score')return `单局得分 ≥ ${u.val} 解锁`;
+  if(u.type==='kills')return `累计斩鬼 ≥ ${u.val} 解锁`;
+  if(u.type==='share')return '分享游戏后解锁';
+  return '';
+}
+// 结算时按条件解锁皮肤，返回新解锁列表
+function checkSkinUnlocks(){
+  const newly=[];
+  for(const id in SKINS){
+    if(isSkinUnlocked(id))continue;
+    const u=SKINS[id].unlock;
+    let ok=false;
+    if(u.type==='score')ok=score>=u.val;
+    else if(u.type==='kills')ok=meta.totalKills>=u.val;
+    if(ok){meta.skins.unlocked.push(id);newly.push(id);}
+  }
+  return newly;
+}
+// 分享解锁（标题菜单按钮调用）
+function unlockShareSkin(){
+  if(!isSkinUnlocked('share')){
+    meta.skins.unlocked.push('share');saveMeta();
+    showToast('解锁皮肤：<b style="color:#66ffaa">传世钟馗</b>', 3000);
+    if(document.getElementById('workshop').classList.contains('show'))renderWorkshop();
+  } else {
+    showToast('已分享给好友！', 2000);
+  }
+}
+
+// 局内运行时buff（每局重置）
+let runBuffs={dmg:1,charge:1,range:1,comboWindow:2500,lifesteal:false,goldBonus:0,activateCount:0,doubleEvery:false};
+let runEarn={coin:0,ink:0};
+let waveLifestealUsed=false;
+let runBanked=false;
+
+// 计算符的有效伤害/范围（等级+路径+局内buff）
+function talismanStats(name){
+  const def=TALISMAN_DEFS[name];
+  const m=meta.talismans[name]||{level:1,path:null};
+  let dmg=def.base.dmg, range=def.base.range, special=def.base.special||null;
+  let crit=0, chain=0, stun=0, freezeMul=1, burnMul=1, double=false, pull=false, spread=false;
+  let globalFreeze=false, slowExplode=false, pullStrong=false, bossMul=1;
+  if(m.level>=2){dmg*=1.15;range*=1.10;}
+  if(m.level>=3 && m.path && def[m.path]){
+    const p=def[m.path];
+    if(p.dmgMul)dmg*=p.dmgMul;
+    if(p.rangeMul)range*=p.rangeMul;
+    if(p.crit)crit=p.crit;
+    if(p.chain)chain=p.chain;
+    if(p.stun)stun=p.stun;
+    if(p.freezeMul)freezeMul=p.freezeMul;
+    if(p.burnMul)burnMul=p.burnMul;
+    if(p.double)double=true;
+    if(p.pull)pull=true;
+    if(p.spread)spread=true;
+    if(p.special)special=p.special;
+    if(p.globalFreeze)globalFreeze=true;
+    if(p.slowExplode)slowExplode=true;
+    if(p.pullStrong)pullStrong=true;
+    if(p.bossMul)bossMul=p.bossMul;
+  }
+  if(m.level>=4 && m.path){ if(m.path==='A')range*=1.3; else dmg*=1.3; }
+  if(m.level>=5 && m.path){ if(m.path==='B')crit+=0.15; if(name==='雷符'&&m.path==='A')chain=99; }
+  dmg*=runBuffs.dmg;
+  range*=runBuffs.range;
+  return {dmg:Math.max(1,Math.round(dmg)),range,special,crit,chain,stun,freezeMul,burnMul,double,pull,spread,
+          globalFreeze,slowExplode,pullStrong,bossMul,
+          glyph:def.glyph,name,path:m.path,level:m.level};
+}
+
+function equipBonus(slot){
+  const tier=meta.equip[slot]||0;
+  if(tier<=0)return 0;
+  return EQUIP_DEFS[slot].bonus[tier-1];
+}
+
+function coinForGhost(type){
+  if(type==='fast'||type==='zigzag'||type==='flyer'||type==='split')return 2;
+  if(type==='shield'||type==='fire'||type==='round'||type==='hidden')return 3;
+  return 1;
+}
+
+// ==================== 鬼 ====================
+const GHOST_TYPES={
+  normal:{hp:1,speed:0.5,r:16,color:'#77bbaa',weakness:'横斩符'},
+  fast:{hp:1,speed:1.0,r:13,color:'#55ccee',weakness:'竖劈符'},
+  shield:{hp:3,speed:0.35,r:20,color:'#9999bb',weakness:'雷符'},
+  round:{hp:2,speed:0.5,r:17,color:'#88aa77',weakness:'圆封符'},
+  fire:{hp:2,speed:0.6,r:16,color:'#dd7744',weakness:'三角镇'},
+  zigzag:{hp:1,speed:0.8,r:14,color:'#99bbdd',weakness:'斜斩符'},
+  split:{hp:2,speed:0.5,r:18,color:'#bb88cc',weakness:'火符',splits:true},
+  hidden:{hp:1,speed:0.6,r:15,color:'#668899',weakness:'冰符',cloaks:true},
+  flyer:{hp:1,speed:1.2,r:13,color:'#cc99dd',weakness:'螺旋符',flies:true},
+};
+const WEAKNESS_ICON={'横斩符':'一','竖劈符':'丨','斜斩符':'╲','圆封符':'○','三角镇':'△','雷符':'⚡','火符':'火','冰符':'冰','螺旋符':'旋','敕令':'敕'};
+
+const WAVES=[
+  {count:8, types:['normal','normal','fast'], interval:700},
+  {count:12, types:['normal','fast','fast','zigzag'], interval:600},
+  {count:16, types:['normal','fast','zigzag','round'], interval:520},
+  {count:20, types:['fast','zigzag','round','fire','split'], interval:450},
+  {count:24, types:['fast','zigzag','round','fire','shield','split','hidden'], interval:400},
+  {count:28, types:['fast','zigzag','round','fire','shield','hidden','flyer'], interval:350},
+  {count:32, types:['zigzag','round','fire','shield','fast','flyer','split'], interval:300},
+  {count:36, types:['round','fire','shield','fast','zigzag','hidden','flyer','split'], interval:260},
+  {count:0, types:[], interval:0, boss:true},
+];
+
+let waveSpawned=0, lastSpawn=0, waveDelay=2000;
+let boss=null, bossState='none'; // none/enter/fight/enrage/dead
+let bossSummonT=0, bossChargeT=0, bossChargeDir=null;
+
+function spawnGhost(forceType, atX, atY, miniScale) {
+  const cfg=WAVES[Math.min(wave,WAVES.length-1)];
+  const type=forceType||cfg.types[Math.floor(Math.random()*cfg.types.length)];
+  const g=GHOST_TYPES[type];
+  let x,y;
+  if(atX!==undefined){x=atX;y=atY;}
+  else{
+    const side=Math.floor(Math.random()*4);
+    if(side===0){x=Math.random()*W;y=-30;}
+    else if(side===1){x=W+30;y=Math.random()*H;}
+    else if(side===2){x=Math.random()*W;y=H+30;}
+    else{x=-30;y=Math.random()*H;}
+  }
+  const hpScale=(1+wave*0.2)*(miniScale||1);
+  const spdScale=1+wave*0.08;
+  ghosts.push({
+    x,y,type,hp:Math.max(1,Math.ceil(g.hp*hpScale)),maxHp:Math.max(1,Math.ceil(g.hp*hpScale)),
+    r:g.r*(miniScale?0.6:1),color:g.color,speed:g.speed*spdScale*(miniScale?1.3:1),weakness:g.weakness,
+    phase:Math.random()*6.28,alive:true,frozen:0,burning:0,hitFlash:0,
+    splits:!!g.splits && !miniScale, cloaks:!!g.cloaks, flies:!!g.flies,
+    hidePhase:Math.random()*6.28, alpha:1,
+    flyT:Math.random()*6.28, flyAmp:30+Math.random()*40,
+  });
+}
+
+function spawnBoss(){
+  bossState='enter';
+  boss={
+    x:W/2, y:-80, targetY:H*0.22,
+    hp:80, maxHp:80, r:45, alive:true,
+    phase:0, frozen:0, burning:0, hitFlash:0,
+    weakness:'雷符', enraged:false,
+    enterT:0, summonT:0, chargeT:0, chargeDir:null, charging:false, chargeVx:0, chargeVy:0,
+  };
+  bossSummonT=0; bossChargeT=0;
+  updateBossHP();
+  showWaveAnnounce('百鬼王 · 降临', '#cc2222', 2500);
+  playBossRoar();
+  if(navigator.vibrate)navigator.vibrate([100,50,100,50,200]);
+}
+
+function updateBoss(dt){
+  if(!boss||!boss.alive)return;
+  boss.phase+=0.02;
+  if(boss.hitFlash>0)boss.hitFlash-=dt;
+  if(boss.frozen>0){boss.frozen-=dt;return;}
+  if(boss.burning>0){boss.burning-=dt;boss.hp-=dt*0.003;if(boss.hp<=0){killBoss();return;}}
+
+  if(bossState==='enter'){
+    boss.enterT+=dt;
+    boss.y+=(boss.targetY-boss.y)*0.03;
+    if(Math.abs(boss.y-boss.targetY)<5){bossState='fight';boss.y=boss.targetY;}
+    return;
+  }
+
+  // Enrage check
+  if(!boss.enraged && boss.hp<=boss.maxHp*0.3){
+    boss.enraged=true; bossState='enrage';
+    showWaveAnnounce('百鬼王 · 狂暴!', '#ff2200', 2000);
+    playBossRoar();
+    shake.power=15;
+    if(navigator.vibrate)navigator.vibrate([80,40,80,40,80,40,200]);
+  }
+
+  const summonInterval=boss.enraged?2000:3500;
+  const chargeInterval=boss.enraged?4000:7000;
+
+  // Summon minions
+  bossSummonT+=dt;
+  if(bossSummonT>=summonInterval){
+    bossSummonT=0;
+    const types=['fast','zigzag','normal'];
+    for(let i=0;i<2;i++){
+      const t=types[Math.floor(Math.random()*types.length)];
+      const g=GHOST_TYPES[t];
+      const a=Math.random()*6.28, d=boss.r+30;
+      ghosts.push({
+        x:boss.x+Math.cos(a)*d, y:boss.y+Math.sin(a)*d,
+        type:t, hp:g.hp, maxHp:g.hp, r:g.r, color:g.color,
+        speed:g.speed*1.2, weakness:g.weakness,
+        phase:Math.random()*6.28, alive:true, frozen:0, burning:0, hitFlash:0,
+      });
+    }
+  }
+
+  // Charge attack
+  if(boss.charging){
+    boss.x+=boss.chargeVx*(dt/16);
+    boss.y+=boss.chargeVy*(dt/16);
+    // Bounce off walls
+    if(boss.x<boss.r||boss.x>W-boss.r)boss.chargeVx*=-1;
+    if(boss.y<boss.r||boss.y>H-boss.r)boss.chargeVy*=-1;
+    boss.x=Math.max(boss.r,Math.min(W-boss.r,boss.x));
+    boss.y=Math.max(boss.r,Math.min(H-boss.r,boss.y));
+    bossChargeT+=dt;
+    if(bossChargeT>1200){boss.charging=false;bossChargeT=0;}
+    return;
+  }
+
+  bossChargeT+=dt;
+  if(bossChargeT>=chargeInterval){
+    bossChargeT=0;
+    boss.charging=true;
+    const dx=W/2-boss.x, dy=H/2-boss.y, dist=Math.hypot(dx,dy)||1;
+    const spd=boss.enraged?7:5;
+    boss.chargeVx=(dx/dist)*spd;
+    boss.chargeVy=(dy/dist)*spd;
+    shake.power=8;
+    playBossRoar();
+  } else {
+    // Slow drift toward center-top
+    const tx=W/2, ty=H*0.22;
+    boss.x+=(tx-boss.x)*0.005*(dt/16);
+    boss.y+=(ty-boss.y)*0.005*(dt/16);
+    boss.x+=Math.sin(boss.phase*0.7)*0.4;
+  }
+}
+
+function killBoss(){
+  boss.alive=false; bossState='dead';
+  updateBossHP();
+  // Epic explosion
+  for(let i=0;i<60;i++){
+    const a=Math.random()*6.28, s=3+Math.random()*8;
+    particles.push({x:boss.x,y:boss.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+      r:3+Math.random()*5,color:Math.random()>0.3?'#cc2222':'#ffd700',
+      life:800+Math.random()*600,maxLife:1400,gravity:0.02});
+  }
+  shake.power=20;
+  if(navigator.vibrate)navigator.vibrate([100,50,100,50,100,50,300]);
+  score+=500;
+  document.getElementById('score-val').textContent=score;
+  floatTexts.push({x:W/2,y:H*0.3,text:'百鬼王 · 诛!',color:'#ffd700',life:2000,size:32});
+  setTimeout(()=>{state='victory';},1500);
+}
+
+// ==================== 输入 ====================
+canvas.addEventListener('pointerdown',(e)=>{
+  e.preventDefault(); ensureAudio();
+  if(state!=='playing')return;
+  const x=e.clientX,y=e.clientY;
+  drawing.active=true;
+  drawing.points=[{x,y,t:Date.now()}];
+  drawing.brush=[{x,y,w:9,alpha:1}];
+  drawing.startTime=Date.now();
+  drawing.matchScore=0; drawing.matchName=''; drawing.charge=0;
+  drawing.splash=[];
+  for(let i=0;i<6;i++) drawing.splash.push({x:x+(Math.random()-0.5)*14,y:y+(Math.random()-0.5)*14,r:1+Math.random()*3,a:0.7});
+});
+
+canvas.addEventListener('pointermove',(e)=>{
+  if(!drawing.active)return;
+  const x=e.clientX,y=e.clientY;
+  const last=drawing.points[drawing.points.length-1];
+  const dist=Math.hypot(x-last.x,y-last.y);
+  if(dist<4)return;
+  const now=Date.now();
+  drawing.points.push({x,y,t:now});
+  const dt=now-last.t||16;
+  const speed=dist/dt*1000;
+  const w=speed>900?2.5:speed>500?4.5:speed>250?6.5:9;
+  const alpha=speed>900?0.45:0.9;
+  drawing.brush.push({x,y,w,alpha});
+  if(drawing.points.length%3===0){
+    const m=liveMatch(drawing.points);
+    drawing.matchScore=m.score; drawing.matchName=m.name;
+    const chargeRate=0.06*runBuffs.charge*(1+equipBonus('brush'));
+      drawing.charge=Math.min(1,drawing.charge+m.score*chargeRate);
+    if(drawing.charge>0.15)playCharge(drawing.charge);
+    highlightTalisman(m.score>0.35?m.name:'');
+  }
+  if(now-drawing.lastSnd>55){playBrush(Math.min(1,speed/700));drawing.lastSnd=now;}
+});
+
+canvas.addEventListener('pointerup',()=>{
+  if(!drawing.active)return;
+  drawing.active=false;
+  highlightTalisman('');
+  activateTalisman();
+});
+canvas.addEventListener('pointercancel',()=>{drawing.active=false;drawing.brush=[];drawing.splash=[];highlightTalisman('');});
+
+function highlightTalisman(name) {
+  document.querySelectorAll('#talisman-bar .t-item').forEach(el=>{
+    el.classList.toggle('highlight', el.dataset.t===name);
+  });
+}
+
+// ==================== 激活 ====================
+function activateTalisman() {
+  const pts=drawing.points, strokes=drawing.brush;
+  drawing.brush=[]; drawing.splash=[];
+  if(pts.length<8){spawnDissipate(pts);return;}
+  const result=recognizeStroke(pts);
+  if(!result){
+    playFail(); spawnDissipate(pts);
+    showGrade('废','#555');
+    if(guideMode) showToast('墨散了。<br>再试——画一条<b style="color:#ffd700">平直的横线</b>，从左到右。', 3500);
+    return;
+  }
+
+  const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const gradeNames=['','白','蓝','紫','金'];
+  const gradeColors=['','#ccc','#4488ff','#cc44ff','#ffd700'];
+  const gradeMul=[0,1,1.5,2,3];
+
+  // 进阶：金品级阈值可被"金手"buff降低
+  let grade=result.grade;
+  if(runBuffs.goldBonus>0 && grade<4 && result.score>=(0.85-runBuffs.goldBonus)) grade=4;
+
+  // 进阶：符等级/路径/buff 计算有效数值
+  const ts=talismanStats(result.name);
+
+  playActivate(grade);
+  showGrade(gradeNames[grade], gradeColors[grade]);
+  if(navigator.vibrate) navigator.vibrate(grade>=4?[30,20,60]:grade>=3?[20,10,30]:15);
+  if(grade>=3){slowmo.active=true;slowmo.timer=grade>=4?350:200;}
+  shake.power=grade>=4?12:grade>=3?7:4;
+
+  const range=ts.range*(1+(grade-1)*0.15);
+  const baseDmg=Math.ceil(ts.dmg*gradeMul[grade]);
+
+  activations.push({x:cx,y:cy,glyph:ts.glyph,color:currentSkin().glyph,grade:grade,
+    range:range,timer:0,duration:650,pts:pts.map(p=>({...p}))});
+
+  // 进阶：双符路径 / 双符buff —— 追加一次激活
+  runBuffs.activateCount++;
+  const extraHit = ts.double || (runBuffs.doubleEvery && runBuffs.activateCount%3===0);
+
+  let killed=0, inkThisHit=0;
+  const doDamage=(ox,oy,dmgScale,hitAll)=>{
+    for(const g of ghosts){
+      if(!g.alive)continue;
+      // 隐身鬼：alpha<0.3 时不可被击中（除非全屏敕令）
+      if(g.cloaks && g.alpha<0.3 && !hitAll)continue;
+      const d=Math.hypot(g.x-ox,g.y-oy);
+      if(hitAll || d<range+g.r){
+        let dmg=Math.ceil(baseDmg*dmgScale);
+        if(g.weakness===result.name){dmg*=2; floatTexts.push({x:g.x,y:g.y-g.r-15,text:'弱点!',color:'#ff4444',life:800,size:14});}
+        // 进阶：暴击（一剑封喉/天罚深化）
+        if(ts.crit>0 && Math.random()<ts.crit){dmg=g.hp; floatTexts.push({x:g.x,y:g.y-g.r-28,text:'暴击!',color:'#ffaa00',life:800,size:15});}
+        g.hp-=dmg;
+        if(result.special==='freeze'||ts.special==='freeze')g.frozen=2000*ts.freezeMul;
+        if(result.special==='burn'||ts.special==='burn')g.burning=1500*ts.burnMul;
+        if(ts.stun>0)g.frozen=Math.max(g.frozen,ts.stun);
+        if(ts.pull){const a=Math.atan2(oy-g.y,ox-g.x);const pf=ts.pullStrong?38:20;g.x+=Math.cos(a)*pf;g.y+=Math.sin(a)*pf;}
+        if(g.hp<=0){g.alive=false;killed++;spawnKill(g.x,g.y,g.color);playKill();onGhostKill(g,grade);}
+        else g.hitFlash=150;
+      }
+    }
+  };
+  // 敕令：全屏伤害（无视范围，命中所有鬼含隐身）
+  if(ts.special==='fullscreen'){
+    doDamage(cx,cy,1,true);
+    shake.power=Math.max(shake.power,10);
+    floatTexts.push({x:cx,y:cy-90,text:'敕令 · 诛邪!',color:'#ffd700',life:1200,size:22});
+  } else {
+    doDamage(cx,cy,1);
+  }
+  // 冰符：全场减速/冻结（不限范围）
+  if(ts.special==='globalSlow'){
+    const freezeMs=ts.globalFreeze?1200*ts.freezeMul:0;
+    for(const g of ghosts){ if(!g.alive)continue;
+      if(freezeMs>0)g.frozen=Math.max(g.frozen,freezeMs);
+      else g.frozen=Math.max(g.frozen,900); // 基础：短暂减速
+      if(ts.slowExplode){g.hp-=Math.ceil(baseDmg*0.5);if(g.hp<=0){g.alive=false;killed++;spawnKill(g.x,g.y,g.color);playKill();onGhostKill(g,grade);}}
+    }
+    floatTexts.push({x:cx,y:cy-90,text:ts.globalFreeze?'千里冰封':'霜降',color:'#66ccff',life:1100,size:18});
+  }
+  // 螺旋符：把所有鬼拉向中心（不限范围）
+  if(ts.special==='pull'){
+    for(const g of ghosts){ if(!g.alive)continue;
+      const a=Math.atan2(cy-g.y,cx-g.x);const pf=ts.pullStrong?46:28;
+      g.x+=Math.cos(a)*pf;g.y+=Math.sin(a)*pf;
+    }
+    floatTexts.push({x:cx,y:cy-90,text:ts.pullStrong?'万流归宗':'漩涡',color:'#cc88ff',life:1100,size:18});
+  }
+  if(extraHit){
+    // 双斩：镜像偏移；双符buff：同点再来一次
+    if(ts.double) doDamage(cx,cy,1); else doDamage(cx,cy,0.8);
+    floatTexts.push({x:cx,y:cy-70,text:'双符!',color:'#cc44ff',life:900,size:16});
+  }
+
+  // 进阶：连锁雷狱（弹跳）
+  if(ts.chain>0){
+    let hits=0, last={x:cx,y:cy}, used=new Set(), chainDmg=baseDmg;
+    for(const g of ghosts){ if(g.alive && Math.hypot(g.x-cx,g.y-cy)<range+g.r) used.add(g); }
+    while(hits<ts.chain){
+      let nearest=null,nd=1e9;
+      for(const g of ghosts){ if(!g.alive||used.has(g))continue; const d=Math.hypot(g.x-last.x,g.y-last.y); if(d<nd&&d<180){nd=d;nearest=g;} }
+      if(!nearest)break;
+      used.add(nearest);
+      chainDmg = ts.chain>=99? baseDmg : Math.ceil(chainDmg*0.8);
+      nearest.hp-=chainDmg; nearest.hitFlash=150;
+      particles.push({x:last.x,y:last.y,vx:0,vy:0,r:2,color:'#aaeeff',life:200,maxLife:200,gravity:0,lightning:{x2:nearest.x,y2:nearest.y}});
+      if(nearest.hp<=0){nearest.alive=false;killed++;spawnKill(nearest.x,nearest.y,nearest.color);playKill();onGhostKill(nearest,grade);}
+      last=nearest; hits++;
+    }
+  }
+
+  // Boss damage
+  if(boss&&boss.alive&&bossState!=='enter'){
+    const bd=Math.hypot(boss.x-cx,boss.y-cy);
+    const bossHit = ts.special==='fullscreen' || bd<range+boss.r;
+    if(bossHit){
+      let dmg=Math.ceil(baseDmg*ts.bossMul);
+      if(boss.weakness===result.name){dmg*=2;floatTexts.push({x:boss.x,y:boss.y-boss.r-20,text:'弱点!',color:'#ff4444',life:800,size:18});}
+      if(ts.crit>0 && Math.random()<ts.crit){dmg*=2;floatTexts.push({x:boss.x,y:boss.y-boss.r-38,text:'暴击!',color:'#ffaa00',life:800,size:16});}
+      if(result.special==='freeze'||ts.special==='freeze')boss.frozen=1200*ts.freezeMul;
+      if(result.special==='burn'||ts.special==='burn')boss.burning=1500*ts.burnMul;
+      if(ts.special==='globalSlow')boss.frozen=Math.max(boss.frozen,ts.globalFreeze?1200:700);
+      if(ts.stun>0)boss.frozen=Math.max(boss.frozen,ts.stun);
+      boss.hp-=dmg;
+      boss.hitFlash=200;
+      shake.power=Math.max(shake.power,6);
+      floatTexts.push({x:boss.x,y:boss.y-boss.r-5,text:`-${dmg}`,color:'#ffd700',life:700,size:16});
+      updateBossHP();
+      if(boss.hp<=0)killBoss();
+    }
+  }
+
+  if(killed>0){
+    const now=Date.now();
+    combo=(now-lastKillT<runBuffs.comboWindow)?combo+killed:killed;
+    lastKillT=now;
+    const gained=killed*10*(1+combo*0.3)*gradeMul[grade];
+    score+=Math.floor(gained);
+    document.getElementById('score-val').textContent=score;
+    floatTexts.push({x:cx,y:cy-30,text:`+${Math.floor(gained)}`,color:gradeColors[grade],life:1000,size:16+Math.min(combo*2,16)});
+    if(combo>=3)floatTexts.push({x:cx,y:cy-55,text:`${combo}连斩!`,color:'#ff4444',life:1200,size:20});
+    // 进阶：嗜血buff
+    if(runBuffs.lifesteal && !waveLifestealUsed && Math.random()<0.15 && lives<maxLives){
+      lives++; waveLifestealUsed=true;
+      document.getElementById('lives-val').textContent='❤️'.repeat(lives)+'🖤'.repeat(Math.max(0,maxLives-lives));
+      floatTexts.push({x:cx,y:cy-80,text:'吸血!',color:'#ff66aa',life:1000,size:16});
+    }
+  }
+
+  // 引导反馈
+  if(guideMode && killed>0){
+    guideKillCount++;
+    if(guideKillCount===1) showToast('好。笔落，鬼灭。<br>试试画个<b style="color:#88ddff">圈「○」</b>——不用很圆，大致闭合就行。', 4500);
+    if(guideKillCount===2) showToast('再试<b style="color:#ff6600">三角「△」</b>或<b style="color:#aaeeff">Z字「⚡」</b>', 4000);
+    if(guideKillCount>=3){guideMode=false; showToast('够了。正式开战。', 2500);}
+  }
+
+  drawing.points=[];
+}
+
+function spawnDissipate(pts){
+  for(let i=0;i<pts.length;i+=3)particles.push({x:pts[i].x,y:pts[i].y,vx:(Math.random()-0.5)*1.5,vy:Math.random()*2+0.5,r:2+Math.random()*3,color:'#2a2a3e',life:500,maxLife:500,gravity:0.06});
+}
+function spawnKill(x,y,color){
+  for(let i=0;i<12;i++){const a=Math.random()*6.28,s=2+Math.random()*5;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:2+Math.random()*3,color:Math.random()>0.4?color:'#ffd700',life:500+Math.random()*300,maxLife:800,gravity:0.03});}
+}
+function showGrade(text,color){
+  const el=document.getElementById('grade-flash');
+  el.textContent=text;el.style.color=color;el.style.textShadow=`0 0 30px ${color},0 0 60px ${color}`;
+  el.className='show';setTimeout(()=>el.className='hide',180);setTimeout(()=>el.className='',700);
+}
+
+// ==================== 进阶：击杀掉落 ====================
+function onGhostKill(g,grade){
+  meta.totalKills++;
+  const crownMul=1+equipBonus('crown');
+  const coin=Math.ceil(coinForGhost(g.type)*crownMul);
+  runEarn.coin+=coin;
+  // 金品级杀怪掉墨精（技术货币）
+  if(grade>=4){ runEarn.ink+=1; floatTexts.push({x:g.x,y:g.y-g.r-2,text:'+1墨精',color:'#aaeeff',life:900,size:12}); }
+  onGhostDeath(g,grade);
+}
+
+// 死亡时触发的特殊行为（分裂鬼→裂成2只小鬼）
+function onGhostDeath(g,grade){
+  if(g.splits){
+    for(let i=0;i<2;i++){
+      const ang=Math.random()*6.28, off=14;
+      spawnGhost('split', g.x+Math.cos(ang)*off, g.y+Math.sin(ang)*off, 0.5);
+    }
+    floatTexts.push({x:g.x,y:g.y-g.r-4,text:'裂!',color:'#bb88cc',life:800,size:13});
+  }
+}
+
+// ==================== 进阶：局内三选一Buff ====================
+let buffChoicePending=false;
+function offerBuffChoice(){
+  if(state!=='playing')return;
+  state='buff'; // 暂停
+  buffChoicePending=true;
+  // 随机抽3个不重复buff
+  const pool=[...BUFF_POOL];
+  const picks=[];
+  while(picks.length<3 && pool.length){ picks.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]); }
+  const wrap=document.getElementById('buff-overlay');
+  const cards=document.getElementById('buff-cards');
+  cards.innerHTML='';
+  picks.forEach(b=>{
+    const c=document.createElement('div');
+    c.className='buff-card';
+    c.innerHTML=`<div class="buff-icon">${b.icon}</div><div class="buff-name">${b.name}</div><div class="buff-desc">${b.desc}</div>`;
+    c.onclick=()=>chooseBuff(b);
+    cards.appendChild(c);
+  });
+  wrap.classList.add('show');
+}
+
+function applyBuff(b){
+  switch(b.id){
+    case 'dmg': runBuffs.dmg*=1.25; break;
+    case 'charge': runBuffs.charge*=1.20; break;
+    case 'range': runBuffs.range*=1.20; break;
+    case 'combo': runBuffs.comboWindow=Math.min(6000,runBuffs.comboWindow+1500); break;
+    case 'lifesteal': runBuffs.lifesteal=true; break;
+    case 'gold': runBuffs.goldBonus+=0.07; break;
+    case 'double': runBuffs.doubleEvery=true; break;
+    case 'life': maxLives++; lives=maxLives;
+      document.getElementById('lives-val').textContent='❤️'.repeat(lives); break;
+  }
+}
+
+function chooseBuff(b){
+  applyBuff(b);
+  runBuffsChosen.push(b);
+  renderRunBuffs();
+  document.getElementById('buff-overlay').classList.remove('show');
+  buffChoicePending=false;
+  state='playing';
+  lastTime=Date.now();
+  if(navigator.vibrate)navigator.vibrate(30);
+}
+
+let runBuffsChosen=[];
+function renderRunBuffs(){
+  const el=document.getElementById('run-buffs');
+  el.innerHTML=runBuffsChosen.map(b=>`<span title="${b.name}">${b.icon}</span>`).join('');
+}
+
+function showWaveAnnounce(text,color,dur){
+  const el=document.getElementById('wave-announce');
+  el.textContent=text;el.style.color=color;el.style.opacity='1';
+  el.style.transform='translate(-50%,-50%) scale(1.3)';
+  setTimeout(()=>{el.style.transform='translate(-50%,-50%) scale(1)';},50);
+  setTimeout(()=>{el.style.opacity='0';},dur||1500);
+}
+
+function updateBossHP(){
+  const bar=document.getElementById('boss-hp-bar');
+  const fill=document.getElementById('boss-hp-fill');
+  if(!boss||!boss.alive){bar.style.display='none';return;}
+  bar.style.display='block';
+  fill.style.width=Math.max(0,(boss.hp/boss.maxHp)*100)+'%';
+  if(boss.enraged)fill.style.background='linear-gradient(90deg,#ff2200,#ff6600)';
+}
+
+function playBossRoar(){
+  if(!audioCtx)return;
+  const t=audioCtx.currentTime;
+  const o1=audioCtx.createOscillator();o1.type='sawtooth';o1.frequency.setValueAtTime(60,t);o1.frequency.exponentialRampToValueAtTime(30,t+0.6);
+  const o2=audioCtx.createOscillator();o2.type='square';o2.frequency.setValueAtTime(45,t);o2.frequency.exponentialRampToValueAtTime(25,t+0.5);
+  const g1=audioCtx.createGain();g1.gain.setValueAtTime(0.3,t);g1.gain.exponentialRampToValueAtTime(0.01,t+0.7);
+  const g2=audioCtx.createGain();g2.gain.setValueAtTime(0.15,t);g2.gain.exponentialRampToValueAtTime(0.01,t+0.5);
+  o1.connect(g1).connect(audioCtx.destination);o2.connect(g2).connect(audioCtx.destination);
+  o1.start(t);o1.stop(t+0.7);o2.start(t);o2.stop(t+0.5);
+}
+
+// ==================== 主循环 ====================
+function loop(){
+  const now=Date.now();let dt=Math.min(now-lastTime,50);lastTime=now;
+  if(slowmo.active){slowmo.timer-=dt;if(slowmo.timer<=0)slowmo.active=false;else dt*=0.3;}
+  if(state==='playing')gameTime+=dt;
+  update(dt);render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  if(state!=='playing')return;
+  if(waveDelay>0){waveDelay-=dt;}
+  else{
+    const cfg=WAVES[Math.min(wave,WAVES.length-1)];
+    if(cfg.boss){
+      // Boss wave
+      if(bossState==='none')spawnBoss();
+      updateBoss(dt);
+    } else if(waveSpawned<cfg.count){
+      if(gameTime-lastSpawn>cfg.interval){
+        // Batch spawn: 1 early, 2 mid, 3 late
+        const batch=wave<2?1:wave<5?2:3;
+        for(let b=0;b<batch&&waveSpawned<cfg.count;b++){
+          if(guideMode&&waveSpawned===0)spawnGhost('normal');
+          else spawnGhost();
+          waveSpawned++;
+        }
+        lastSpawn=gameTime;
+      }
+    }else if(ghosts.filter(g=>g.alive).length===0){
+      wave++;waveSpawned=0;waveDelay=1800;
+      const clearedWave=wave-1; // 0-indexed wave just cleared
+      if(wave<WAVES.length){
+        const nextCfg=WAVES[wave];
+        setScene(sceneForWave(wave)); // 场景随波次切换
+        if(nextCfg.boss){
+          document.getElementById('wave-val').textContent='最终波';
+          showWaveAnnounce('第八波 · 百鬼王', '#cc2222', 2000);
+        } else {
+          document.getElementById('wave-val').textContent=`第 ${wave+1} 波`;
+          showWaveAnnounce(`第 ${wave+1} 波`, '#ffd700', 1200);
+        }
+        // 进阶快感：清完第2/4/6/8波（0-indexed 1/3/5/7）三选一buff
+        if([1,3,5,7].includes(clearedWave)){
+          setTimeout(()=>offerBuffChoice(), 900);
+        }
+      }
+    }
+  }
+
+  // 环境粒子 + 场景淡入
+  updateAmbient(dt);
+  if(sceneFade>0)sceneFade=Math.max(0,sceneFade-dt*0.0016);
+
+  const cx=W/2,cy=H/2;
+  for(const g of ghosts){
+    if(!g.alive)continue;
+    g.phase+=0.03;
+    // 隐身鬼：透明度周期性变化，alpha<0.3 时不可见且不可被击中
+    if(g.cloaks){ g.hidePhase+=dt*0.0022; g.alpha=0.5+0.5*Math.sin(g.hidePhase); }
+    if(g.frozen>0){g.frozen-=dt;continue;}
+    if(g.burning>0){g.burning-=dt;g.hp-=dt*0.002;if(g.hp<=0){g.alive=false;onGhostDeath(g,1);spawnKill(g.x,g.y,g.color);continue;}}
+    if(g.hitFlash>0)g.hitFlash-=dt;
+    const dx=cx-g.x,dy=cy-g.y,dist=Math.hypot(dx,dy);
+    if(dist<28){
+      g.alive=false;lives--;
+      document.getElementById('lives-val').textContent='❤️'.repeat(Math.max(0,lives))+'🖤'.repeat(Math.max(0,maxLives-lives));
+      shake.power=10;if(navigator.vibrate)navigator.vibrate(80);
+      if(lives<=0)state='dead';
+      continue;
+    }
+    const spd=g.speed*(dt/16);
+    if(g.flies){
+      // 飞行鬼：朝中心俯冲 + 垂直方向正弦摆动
+      g.flyT+=dt*0.004;
+      const nx=-dy/dist, ny=dx/dist; // 垂直法向
+      const sway=Math.sin(g.flyT)*g.flyAmp*0.04;
+      g.x+=(dx/dist)*spd*1.1+nx*sway;
+      g.y+=(dy/dist)*spd*1.1+ny*sway;
+    } else {
+      g.x+=(dx/dist)*spd+Math.sin(g.phase)*0.3;
+      g.y+=(dy/dist)*spd;
+    }
+  }
+  ghosts=ghosts.filter(g=>g.alive);
+
+  // Boss collision with center
+  if(boss&&boss.alive&&bossState!=='enter'){
+    const bdist=Math.hypot(boss.x-W/2,boss.y-H/2);
+    if(bdist<28+boss.r*0.5){
+      lives--;
+      document.getElementById('lives-val').textContent='❤️'.repeat(Math.max(0,lives))+'🖤'.repeat(Math.max(0,maxLives-lives));
+      shake.power=14;if(navigator.vibrate)navigator.vibrate(120);
+      boss.x=W/2;boss.y=H*0.22;boss.charging=false;bossChargeT=0;
+      if(lives<=0)state='dead';
+    }
+  }
+
+  for(const p of particles){p.life-=dt;p.x+=p.vx*(dt/16);p.y+=p.vy*(dt/16);p.vy+=p.gravity;p.vx*=0.98;}
+  particles=particles.filter(p=>p.life>0);
+  for(const ft of floatTexts){ft.life-=dt;ft.y-=0.7*(dt/16);}
+  floatTexts=floatTexts.filter(ft=>ft.life>0);
+  for(const a of activations)a.timer+=dt;
+  activations=activations.filter(a=>a.timer<a.duration);
+  if(shake.power>0.3){shake.x=(Math.random()-0.5)*shake.power;shake.y=(Math.random()-0.5)*shake.power;shake.power*=0.88;}
+  else{shake.x=0;shake.y=0;shake.power=0;}
+}
+
+// ==================== 渲染 ====================
+function render(){
+  ctx.save();ctx.translate(shake.x,shake.y);
+  ctx.clearRect(-20,-20,W+40,H+40);
+  drawBg();drawCenter();drawGhosts();drawBoss();drawActivations();drawStroke();drawParticles();drawFloats();
+  ctx.restore();
+  if(state==='dead')drawDeath();
+  if(state==='victory')drawVictory();
+}
+
+function drawBg(){
+  const sc=SCENES[currentScene];
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,sc.top);g.addColorStop(1,sc.bot);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // 中心微光
+  const rg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.6);
+  rg.addColorStop(0,'rgba(255,215,0,0.04)');rg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=rg;ctx.fillRect(0,0,W,H);
+  drawSceneDecor(sc);
+  drawAmbient();
+  // Boss 血红压境
+  if(bossState==='fight'||bossState==='enrage'){
+    const pulse=bossState==='enrage'?0.10+Math.sin(gameTime*0.005)*0.05:0.06;
+    ctx.fillStyle=`rgba(180,20,20,${pulse})`;ctx.fillRect(0,0,W,H);
+  }
+  if(drawing.active){ctx.fillStyle=`rgba(0,0,0,${0.1+drawing.charge*0.2})`;ctx.fillRect(0,0,W,H);}
+  // 场景切换淡入淡出
+  if(sceneFade>0){ctx.fillStyle=`rgba(0,0,0,${sceneFade})`;ctx.fillRect(0,0,W,H);}
+}
+
+function drawCenter(){
+  const sk=currentSkin();
+  const p=1+Math.sin(gameTime*0.003)*0.03;
+  ctx.save();ctx.translate(W/2,H/2);ctx.scale(p,p);
+  ctx.globalAlpha=0.12;ctx.fillStyle=sk.glow;ctx.shadowColor=sk.glow;ctx.shadowBlur=30;
+  ctx.beginPath();ctx.arc(0,0,35,0,6.28);ctx.fill();
+  ctx.globalAlpha=1;ctx.shadowBlur=0;
+  ctx.fillStyle='#cc2222';ctx.beginPath();ctx.arc(0,3,18,0,6.28);ctx.fill();
+  ctx.fillStyle='#ffcc99';ctx.beginPath();ctx.arc(0,-10,11,0,6.28);ctx.fill();
+  ctx.fillStyle='#222';ctx.fillRect(-13,-23,26,6);ctx.fillRect(-2,-29,4,8);
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(-4,-11,1.5,0,6.28);ctx.arc(4,-11,1.5,0,6.28);ctx.fill();
+  ctx.restore();
+}
+
+function drawGhosts(){
+  for(const g of ghosts){
+    ctx.save();ctx.translate(g.x,g.y+Math.sin(g.phase)*3);
+    // 隐身鬼：随alpha淡入淡出
+    let baseAlpha=1;
+    if(g.cloaks)baseAlpha=Math.max(0.08,g.alpha);
+    ctx.globalAlpha=baseAlpha;
+    if(g.hitFlash>0)ctx.globalAlpha=baseAlpha*(0.5+Math.sin(g.hitFlash*0.1)*0.5);
+    if(g.frozen>0){ctx.globalAlpha=baseAlpha*0.6;ctx.shadowColor='#88ddff';ctx.shadowBlur=8;}
+    if(g.burning>0){ctx.shadowColor='#ff6600';ctx.shadowBlur=6;}
+
+    // 飞行鬼：先画翅膀
+    if(g.flies){
+      ctx.fillStyle='rgba(204,153,221,0.5)';
+      const wf=Math.sin(g.phase*3)*0.5+0.7;
+      ctx.beginPath();ctx.ellipse(-g.r*0.9,-g.r*0.2,g.r*0.7,g.r*0.4*wf,-0.5,0,6.28);ctx.fill();
+      ctx.beginPath();ctx.ellipse(g.r*0.9,-g.r*0.2,g.r*0.7,g.r*0.4*wf,0.5,0,6.28);ctx.fill();
+    }
+
+    ctx.fillStyle=g.color;ctx.beginPath();ctx.arc(0,0,g.r,Math.PI,0);
+    for(let i=0;i<=4;i++){ctx.lineTo(g.r-(2*g.r*i/4),g.r*0.5+Math.sin(g.phase+i*1.5)*3);}
+    ctx.closePath();ctx.fill();
+
+    // 分裂鬼：身上画一道裂痕
+    if(g.splits){
+      ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(0,-g.r*0.7);ctx.lineTo(-g.r*0.2,0);ctx.lineTo(g.r*0.2,g.r*0.3);ctx.stroke();
+    }
+
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-g.r*0.3,-g.r*0.1,g.r*0.2,0,6.28);ctx.arc(g.r*0.3,-g.r*0.1,g.r*0.2,0,6.28);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(-g.r*0.3,-g.r*0.05,g.r*0.09,0,6.28);ctx.arc(g.r*0.3,-g.r*0.05,g.r*0.09,0,6.28);ctx.fill();
+
+    // 弱点图标（隐身鬼淡出时不显示，避免暴露）
+    if(!(g.cloaks && g.alpha<0.3)){
+      ctx.globalAlpha=0.85*baseAlpha;
+      ctx.font=`bold ${Math.max(11,g.r*0.7)}px "KaiTi",serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=4;
+      ctx.fillText(WEAKNESS_ICON[g.weakness]||'?', 0, -g.r-10);
+      ctx.shadowBlur=0;
+    }
+
+    if(g.maxHp>1){
+      ctx.globalAlpha=baseAlpha;ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(-g.r,-g.r-22,g.r*2,3);
+      ctx.fillStyle=g.hp/g.maxHp>0.3?'#44dd44':'#dd4444';ctx.fillRect(-g.r,-g.r-22,g.r*2*(g.hp/g.maxHp),3);
+    }
+    ctx.restore();
+  }
+}
+
+function drawBoss(){
+  if(!boss||!boss.alive)return;
+  ctx.save();ctx.translate(boss.x,boss.y+Math.sin(boss.phase)*4);
+  if(boss.hitFlash>0)ctx.globalAlpha=0.5+Math.sin(boss.hitFlash*0.08)*0.5;
+  if(boss.frozen>0){ctx.globalAlpha=0.6;ctx.shadowColor='#88ddff';ctx.shadowBlur=12;}
+  if(boss.burning>0){ctx.shadowColor='#ff6600';ctx.shadowBlur=10;}
+
+  // Enrage aura
+  if(boss.enraged){
+    ctx.globalAlpha=0.15+Math.sin(boss.phase*2)*0.08;
+    ctx.fillStyle='#ff2200';ctx.shadowColor='#ff2200';ctx.shadowBlur=40;
+    ctx.beginPath();ctx.arc(0,0,boss.r+15,0,6.28);ctx.fill();
+    ctx.shadowBlur=0;ctx.globalAlpha=1;
+  }
+
+  // Body
+  const bc=boss.enraged?'#aa1133':'#8833aa';
+  ctx.fillStyle=bc;ctx.beginPath();ctx.arc(0,0,boss.r,Math.PI,0);
+  for(let i=0;i<=6;i++){ctx.lineTo(boss.r-(2*boss.r*i/6),boss.r*0.5+Math.sin(boss.phase+i*1.2)*4);}
+  ctx.closePath();ctx.fill();
+
+  // Horns
+  ctx.fillStyle=boss.enraged?'#ff4444':'#cc8800';
+  ctx.beginPath();ctx.moveTo(-boss.r*0.5,-boss.r*0.6);ctx.lineTo(-boss.r*0.7,-boss.r*1.3);ctx.lineTo(-boss.r*0.2,-boss.r*0.7);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(boss.r*0.5,-boss.r*0.6);ctx.lineTo(boss.r*0.7,-boss.r*1.3);ctx.lineTo(boss.r*0.2,-boss.r*0.7);ctx.closePath();ctx.fill();
+
+  // Eyes (angry)
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(-boss.r*0.3,-boss.r*0.15,boss.r*0.22,0,6.28);ctx.arc(boss.r*0.3,-boss.r*0.15,boss.r*0.22,0,6.28);ctx.fill();
+  ctx.fillStyle=boss.enraged?'#ff0000':'#cc2222';
+  ctx.beginPath();ctx.arc(-boss.r*0.3,-boss.r*0.1,boss.r*0.1,0,6.28);ctx.arc(boss.r*0.3,-boss.r*0.1,boss.r*0.1,0,6.28);ctx.fill();
+  // Angry brows
+  ctx.strokeStyle=bc;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(-boss.r*0.5,-boss.r*0.4);ctx.lineTo(-boss.r*0.15,-boss.r*0.25);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(boss.r*0.5,-boss.r*0.4);ctx.lineTo(boss.r*0.15,-boss.r*0.25);ctx.stroke();
+
+  // Weakness icon
+  ctx.globalAlpha=0.9;
+  ctx.font=`bold ${boss.r*0.6}px "KaiTi",serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=6;
+  ctx.fillText('⚡', 0, -boss.r-18);
+  ctx.shadowBlur=0;
+
+  // Charge indicator
+  if(boss.charging){
+    ctx.globalAlpha=0.4;ctx.strokeStyle='#ff4444';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,boss.r+8+Math.sin(boss.phase*4)*4,0,6.28);ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawStroke(){
+  const strokes=drawing.brush;
+  if(strokes.length<2)return;
+  const skin=currentSkin();
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+
+  for(let i=1;i<strokes.length;i++){
+    const s=strokes[i],prev=strokes[i-1];
+    ctx.globalAlpha=s.alpha*0.9;ctx.strokeStyle=skin.trail;ctx.lineWidth=s.w;
+    ctx.beginPath();ctx.moveTo(prev.x,prev.y);ctx.lineTo(s.x,s.y);ctx.stroke();
+  }
+
+  const ch=drawing.charge;
+  if(ch>0.05){
+    ctx.shadowColor=skin.glow;ctx.shadowBlur=4+ch*18;
+    for(let i=1;i<strokes.length;i++){
+      const s=strokes[i],prev=strokes[i-1];
+      const prog=i/strokes.length;
+      ctx.globalAlpha=prog*ch*0.7;
+      ctx.strokeStyle=skin.glow;
+      ctx.lineWidth=s.w*(0.5+ch*0.5);
+      ctx.beginPath();ctx.moveTo(prev.x,prev.y);ctx.lineTo(s.x,s.y);ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+  }
+
+  if(drawing.active&&strokes.length>0){
+    const tip=strokes[strokes.length-1];
+    ctx.globalAlpha=0.9;ctx.fillStyle=skin.glow;ctx.shadowColor=skin.glow;ctx.shadowBlur=10+ch*20;
+    ctx.beginPath();ctx.arc(tip.x,tip.y,4+ch*7,0,6.28);ctx.fill();ctx.shadowBlur=0;
+    if(ch>0.3&&Math.random()<ch*0.4){
+      const a=Math.random()*6.28,d=5+Math.random()*10;
+      particles.push({x:tip.x+Math.cos(a)*d,y:tip.y+Math.sin(a)*d,vx:Math.cos(a)*0.4,vy:-0.5-Math.random()*0.5,r:1+Math.random()*1.5,color:skin.glow,life:250,maxLife:250,gravity:-0.02});
+    }
+  }
+
+  for(const sp of drawing.splash){ctx.globalAlpha=sp.a;ctx.fillStyle=skin.trail;ctx.beginPath();ctx.arc(sp.x,sp.y,sp.r,0,6.28);ctx.fill();sp.a-=0.008;}
+  drawing.splash=drawing.splash.filter(s=>s.a>0);
+
+  if(drawing.active&&drawing.matchScore>0.35&&drawing.matchName){
+    const cx2=drawing.points.reduce((s,p)=>s+p.x,0)/drawing.points.length;
+    const cy2=drawing.points.reduce((s,p)=>s+p.y,0)/drawing.points.length;
+    ctx.globalAlpha=drawing.matchScore*0.5;
+    ctx.font='bold 14px "KaiTi",serif';ctx.textAlign='center';
+    ctx.fillStyle=skin.glow;
+    ctx.fillText(drawing.matchName, cx2, cy2-30);
+  }
+
+  ctx.restore();
+}
+
+function drawActivations(){
+  for(const a of activations){
+    const p=a.timer/a.duration;
+    ctx.save();
+    if(p<0.3){
+      const pp=p/0.3;ctx.globalAlpha=1-pp*0.3;
+      ctx.strokeStyle=a.color;ctx.lineWidth=3+a.grade;ctx.shadowColor=a.color;ctx.shadowBlur=20;ctx.lineCap='round';
+      if(a.pts.length>1){ctx.beginPath();ctx.moveTo(a.pts[0].x,a.pts[0].y);const n=Math.floor(a.pts.length*Math.min(1,pp*1.5));for(let i=1;i<n;i++)ctx.lineTo(a.pts[i].x,a.pts[i].y);ctx.stroke();}
+    }
+    if(p>0.1&&p<0.55){
+      const pp=(p-0.1)/0.45;const sc=0.5+pp*0.5;
+      ctx.globalAlpha=Math.sin(pp*Math.PI)*0.9;
+      ctx.translate(a.x,a.y);ctx.scale(sc,sc);
+      ctx.font=`bold ${40+a.grade*10}px "KaiTi","STKaiti",serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=a.color;ctx.shadowColor=a.color;ctx.shadowBlur=30;
+      ctx.fillText(a.glyph,0,0);
+    }
+    if(p>0.25){
+      const pp=(p-0.25)/0.75;const r=a.range*pp;
+      ctx.globalAlpha=(1-pp)*0.5;ctx.strokeStyle=a.color;ctx.lineWidth=3*(1-pp)+1;
+      ctx.shadowColor=a.color;ctx.shadowBlur=8;
+      ctx.beginPath();ctx.arc(a.x,a.y,r,0,6.28);ctx.stroke();
+      if(pp<0.4){ctx.globalAlpha=(1-pp*2.5)*0.2;ctx.fillStyle=a.color;ctx.beginPath();ctx.arc(a.x,a.y,r*0.6,0,6.28);ctx.fill();}
+    }
+    ctx.restore();
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    const a=Math.max(0,p.life/p.maxLife);
+    if(p.lightning){
+      // 闪电链：锯齿线段
+      ctx.globalAlpha=a;ctx.strokeStyle=p.color;ctx.lineWidth=2;ctx.shadowColor=p.color;ctx.shadowBlur=8;
+      ctx.beginPath();ctx.moveTo(p.x,p.y);
+      const dx=p.lightning.x2-p.x, dy=p.lightning.y2-p.y, segs=4;
+      for(let i=1;i<segs;i++){
+        const t=i/segs;
+        const jx=(Math.random()-0.5)*12, jy=(Math.random()-0.5)*12;
+        ctx.lineTo(p.x+dx*t+jx, p.y+dy*t+jy);
+      }
+      ctx.lineTo(p.lightning.x2,p.lightning.y2);ctx.stroke();ctx.shadowBlur=0;
+    } else {
+      ctx.globalAlpha=a;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r*a,0,6.28);ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+}
+function drawFloats(){
+  for(const ft of floatTexts){ctx.save();ctx.globalAlpha=Math.max(0,ft.life/1000);ctx.font=`bold ${ft.size}px "KaiTi",serif`;ctx.textAlign='center';ctx.fillStyle=ft.color;ctx.shadowColor=ft.color;ctx.shadowBlur=6;ctx.fillText(ft.text,ft.x,ft.y);ctx.restore();}
+}
+
+function bankRunRewards(){
+  if(state==='victory'){ runEarn.coin+=50; runEarn.ink+=2; }
+  meta.coin+=runEarn.coin;
+  meta.ink+=runEarn.ink;
+  if(score>meta.bestScore)meta.bestScore=score;
+  // 皮肤解锁判定
+  const newSkins=checkSkinUnlocks();
+  if(newSkins.length){
+    const names=newSkins.map(id=>SKINS[id].name).join('、');
+    setTimeout(()=>showToast(`解锁皮肤：<b style="color:#ffd700">${names}</b><br>前往工坊更换`, 4500), 800);
+  }
+  saveMeta();
+}
+
+function drawDeath(){
+  if(!runBanked){bankRunRewards();runBanked=true;}
+  ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.font='bold 34px "KaiTi",serif';ctx.fillStyle='#cc2222';ctx.fillText('魂归酆都',W/2,H*0.30);
+  ctx.font='22px sans-serif';ctx.fillStyle='#ffd700';ctx.fillText(`得分: ${score}`,W/2,H*0.40);
+  ctx.font='16px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fillText(`止步 · 第 ${Math.min(wave+1,WAVES.length)} 波`,W/2,H*0.47);
+  ctx.font='15px "KaiTi",serif';ctx.fillStyle='#ffd700';ctx.fillText(`收获 魂币+${runEarn.coin}  墨精+${runEarn.ink}`,W/2,H*0.54);
+  ctx.font='14px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillText('笔未干。再来。',W/2,H*0.61);
+  ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,0.3)';ctx.fillText('点击返回 · 升级工坊',W/2,H*0.68);
+  canvas.onclick=()=>{canvas.onclick=null;showTitleMenu();};
+}
+
+function drawVictory(){
+  if(!runBanked){bankRunRewards();runBanked=true;}
+  ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  const pulse=1+Math.sin(Date.now()*0.004)*0.05;
+  ctx.save();ctx.translate(W/2,H*0.28);ctx.scale(pulse,pulse);
+  ctx.font='bold 38px "KaiTi",serif';ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=30;
+  ctx.fillText('镇妖成功',0,0);ctx.restore();
+  ctx.font='18px "KaiTi",serif';ctx.fillStyle='rgba(255,215,0,0.8)';
+  ctx.fillText('百鬼王诛。酆都重归寂。',W/2,H*0.38);
+  ctx.font='24px sans-serif';ctx.fillStyle='#ffd700';ctx.fillText(`最终得分: ${score}`,W/2,H*0.47);
+  ctx.font='15px "KaiTi",serif';ctx.fillStyle='#ffd700';ctx.fillText(`收获 魂币+${runEarn.coin}  墨精+${runEarn.ink}`,W/2,H*0.54);
+  ctx.font='14px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.fillText('三百年了。这笔，终于写完了。',W/2,H*0.61);
+  ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,0.3)';ctx.fillText('点击返回 · 升级工坊',W/2,H*0.68);
+  canvas.onclick=()=>{canvas.onclick=null;showTitleMenu();};
+}
+
+function applyEquipAtStart(){
+  // 钟馗袍：生命
+  maxLives=3+Math.round(equipBonus('robe'));
+  lives=maxLives;
+  document.getElementById('lives-val').textContent='❤️'.repeat(lives);
+  // 腰间佩：开局随机buff
+  const charmN=Math.round(equipBonus('charm'));
+  for(let i=0;i<charmN;i++){
+    const b=BUFF_POOL[Math.floor(Math.random()*BUFF_POOL.length)];
+    applyBuff(b); runBuffsChosen.push(b);
+  }
+  renderRunBuffs();
+}
+
+function resetGame(){
+  score=0;wave=0;combo=0;
+  ghosts=[];particles=[];floatTexts=[];activations=[];
+  waveSpawned=0;waveDelay=1500;guideMode=false;
+  boss=null;bossState='none';bossSummonT=0;bossChargeT=0;
+  currentScene=0;ambientP=[];sceneFade=1;lastSceneName=SCENES[0].name;
+  // 局内进阶状态重置
+  runBuffs={dmg:1,charge:1,range:1,comboWindow:2500,lifesteal:false,goldBonus:0,activateCount:0,doubleEvery:false};
+  runEarn={coin:0,ink:0};runBuffsChosen=[];waveLifestealUsed=false;runBanked=false;
+  applyEquipAtStart();
+  state='playing';
+  document.getElementById('score-val').textContent='0';
+  document.getElementById('wave-val').textContent='第 1 波';
+  document.getElementById('boss-hp-bar').style.display='none';
+}
+
+loop();
+
+// ==================== 标题菜单 ====================
+function refreshWallets(){
+  const set=(id,c,i)=>{const ce=document.getElementById(id+'-coin'),ie=document.getElementById(id+'-ink');if(ce)ce.textContent=c;if(ie)ie.textContent=i;};
+  set('tm',meta.coin,meta.ink);
+  set('ws',meta.coin,meta.ink);
+}
+function showTitleMenu(){
+  state='title';
+  refreshWallets();
+  document.getElementById('tm-stats').innerHTML=
+    `累计斩鬼 <b style="color:#ffd700">${meta.totalKills}</b><br>最高得分 <b style="color:#ffd700">${meta.bestScore}</b>`;
+  document.getElementById('title-menu').classList.add('show');
+}
+function enterTutorial(){
+  document.getElementById('title-menu').classList.remove('show');
+  tutorialStep=0;
+  document.querySelectorAll('#tutorial .step').forEach(s=>s.classList.remove('active'));
+  const el=document.querySelector('#tutorial .step[data-step="0"]');if(el)el.classList.add('active');
+  document.querySelectorAll('#tutorial .dots span').forEach((d,i)=>d.classList.toggle('active',i===0));
+  document.getElementById('tutorial').classList.remove('hidden');
+}
+
+// ==================== 升级工坊 ====================
+function openWorkshop(){
+  document.getElementById('title-menu').classList.remove('show');
+  refreshWallets();
+  renderWorkshop();
+  document.getElementById('workshop').classList.add('show');
+}
+function closeWorkshop(){
+  document.getElementById('workshop').classList.remove('show');
+  // 若从标题进入，则回标题
+  if(state==='title'||!gameStarted)showTitleMenu();
+}
+
+function talismanNextCost(name){
+  const lv=meta.talismans[name].level;
+  if(lv>=5)return null;
+  return UPGRADE_COST[lv+1];
+}
+function costText(cost){
+  if(!cost)return '';
+  if(cost.coin)return `${cost.coin}魂币`;
+  if(cost.ink)return `${cost.ink}墨精`;
+  return '';
+}
+function canAfford(cost){
+  if(!cost)return false;
+  if(cost.coin)return meta.coin>=cost.coin;
+  if(cost.ink)return meta.ink>=cost.ink;
+  return false;
+}
+
+function renderWorkshop(){
+  refreshWallets();
+  // 符箓
+  const tw=document.getElementById('ws-talismans');tw.innerHTML='';
+  TALISMAN_ORDER.forEach(name=>{
+    const def=TALISMAN_DEFS[name];
+    const m=meta.talismans[name];
+    const st=talismanStats(name);
+    let sub=`伤害 ${st.dmg} · 范围 ${Math.round(st.range)}`;
+    if(m.level>=3&&m.path)sub+=` · <span style="color:#cc99ff">${def[m.path].name}</span>`;
+    let lvTxt=`Lv.${m.level}`;
+    if(m.path)lvTxt+=` · ${m.path}路`;
+    // 按钮
+    let btnHtml='';
+    const cost=talismanNextCost(name);
+    if(m.level>=5){
+      btnHtml=`<button class="ws-btn" disabled>已满级</button>`;
+    } else if(m.level===2){
+      // 下一级是进化分叉（L3）
+      const aff=canAfford(cost);
+      btnHtml=`<button class="ws-btn fork" ${aff?'':'disabled'} onclick="openFork('${name}')">进化 ${costText(cost)}</button>`;
+    } else {
+      const aff=canAfford(cost);
+      btnHtml=`<button class="ws-btn" ${aff?'':'disabled'} onclick="upgradeTalisman('${name}')">升级 ${costText(cost)}</button>`;
+    }
+    const item=document.createElement('div');item.className='ws-item';
+    item.innerHTML=`<div class="glyph">${def.glyph}</div>
+      <div class="info"><div class="nm">${name} <span class="lv">${lvTxt}</span></div><div class="sub">${sub}</div></div>
+      ${btnHtml}`;
+    tw.appendChild(item);
+  });
+  // 装备
+  const ew=document.getElementById('ws-equip');ew.innerHTML='';
+  Object.keys(EQUIP_DEFS).forEach(slot=>{
+    const def=EQUIP_DEFS[slot];
+    const tier=meta.equip[slot]||0;
+    const curName=tier>0?def.tiers[tier-1]:'未装备';
+    let sub=`${def.stat} · 当前：${curName}`;
+    if(tier>0)sub+=`（+${def.bonus[tier-1]}${slot==='robe'?'生命':(slot==='brush'?'速':'')||''}）`;
+    let btnHtml='';
+    if(tier>=3){
+      btnHtml=`<button class="ws-btn" disabled>已满阶</button>`;
+    } else {
+      const c=def.cost[tier];
+      const aff=meta.coin>=c;
+      const label=tier===0?'购买':'升阶';
+      btnHtml=`<button class="ws-btn" ${aff?'':'disabled'} onclick="buyEquip('${slot}')">${label} ${c}魂币</button>`;
+    }
+    const item=document.createElement('div');item.className='ws-item';
+    const icon={brush:'🖌️',robe:'👘',crown:'👑',charm:'🔮'}[slot];
+    item.innerHTML=`<div class="glyph">${icon}</div>
+      <div class="info"><div class="nm">${def.name}</div><div class="sub">${sub}</div></div>
+      ${btnHtml}`;
+    ew.appendChild(item);
+  });
+  // 皮肤
+  const sw=document.getElementById('ws-skins');sw.innerHTML='';
+  Object.keys(SKINS).forEach(id=>{
+    const sk=SKINS[id];
+    const unlocked=isSkinUnlocked(id);
+    const selected=meta.skins.selected===id;
+    let btnHtml='';
+    if(selected){
+      btnHtml=`<button class="ws-btn" disabled>使用中</button>`;
+    } else if(unlocked){
+      btnHtml=`<button class="ws-btn" onclick="selectSkin('${id}')">更换</button>`;
+    } else if(sk.unlock.type==='share'){
+      btnHtml=`<button class="ws-btn" onclick="unlockShareSkin()">分享解锁</button>`;
+    } else {
+      btnHtml=`<button class="ws-btn" disabled>未解锁</button>`;
+    }
+    const item=document.createElement('div');item.className='ws-item'+(selected?' selected':'');
+    item.innerHTML=`<div class="glyph" style="color:${sk.glow};text-shadow:0 0 8px ${sk.glow}">馗</div>
+      <div class="info"><div class="nm">${sk.name}${selected?' ✓':''}</div>
+      <div class="sub">${unlocked?sk.desc:skinUnlockHint(sk)}</div></div>
+      ${btnHtml}`;
+    sw.appendChild(item);
+  });
+}
+
+function selectSkin(id){
+  if(!isSkinUnlocked(id))return;
+  meta.skins.selected=id;
+  saveMeta();
+  renderWorkshop();
+  showToast(`已更换法相：<b style="color:${SKINS[id].glow}">${SKINS[id].name}</b>`, 2500);
+}
+
+function upgradeTalisman(name){
+  const m=meta.talismans[name];
+  const cost=talismanNextCost(name);
+  if(!cost||!canAfford(cost))return;
+  if(cost.coin)meta.coin-=cost.coin;
+  if(cost.ink)meta.ink-=cost.ink;
+  m.level++;
+  saveMeta();renderWorkshop();
+  if(navigator.vibrate)navigator.vibrate(20);
+}
+
+function buyEquip(slot){
+  const def=EQUIP_DEFS[slot];
+  const tier=meta.equip[slot]||0;
+  if(tier>=3)return;
+  const c=def.cost[tier];
+  if(meta.coin<c)return;
+  meta.coin-=c;
+  meta.equip[slot]=tier+1;
+  saveMeta();renderWorkshop();
+  if(navigator.vibrate)navigator.vibrate(20);
+}
+
+// ---- 进化分叉 ----
+let forkTarget=null;
+function openFork(name){
+  const cost=UPGRADE_COST[3];
+  if(!canAfford(cost))return;
+  forkTarget=name;
+  const def=TALISMAN_DEFS[name];
+  document.getElementById('fork-title').textContent=`${name} · 进化择路`;
+  const a=document.getElementById('fork-A');
+  a.innerHTML=`<div class="tag">A · 群攻控制</div><div class="fn">${def.A.name}</div><div class="fd">${def.A.desc}</div>`;
+  const b=document.getElementById('fork-B');
+  b.innerHTML=`<div class="tag">B · 爆发单体</div><div class="fn">${def.B.name}</div><div class="fd">${def.B.desc}</div>`;
+  document.getElementById('fork-modal').classList.add('show');
+}
+function confirmFork(path){
+  if(!forkTarget)return;
+  const cost=UPGRADE_COST[3];
+  if(!canAfford(cost)){closeFork();return;}
+  meta.ink-=cost.ink;
+  meta.talismans[forkTarget].level=3;
+  meta.talismans[forkTarget].path=path;
+  saveMeta();
+  closeFork();
+  renderWorkshop();
+  if(navigator.vibrate)navigator.vibrate([20,30,20]);
+}
+function closeFork(){
+  forkTarget=null;
+  document.getElementById('fork-modal').classList.remove('show');
+}
+
+// 启动：进标题菜单
+showTitleMenu();
+</script>
+</body>
+</html>
