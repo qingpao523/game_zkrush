@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>钟馗之一笔镇妖 v3 - 画符手感版</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100%; height: 100%; }
+#hint {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,215,0,0.5); font-size: 13px; font-family: 'KaiTi','STKaiti',serif;
+  pointer-events: none; text-align: center; letter-spacing: 1px;
+}
+#grade-flash {
+  position: fixed; top: 35%; left: 50%; transform: translate(-50%,-50%) scale(0);
+  font-size: 52px; font-family: 'KaiTi','STKaiti',serif; font-weight: bold;
+  pointer-events: none; z-index: 99; opacity: 0;
+  transition: transform 0.15s cubic-bezier(0.17,0.67,0.29,1.4), opacity 0.15s;
+}
+#grade-flash.show { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+#grade-flash.hide { transform: translate(-50%,-50%) scale(1.3); opacity: 0; transition: all 0.4s; }
+#score-bar {
+  position: fixed; top: 12px; left: 14px; right: 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none; z-index: 10; font-family: 'KaiTi','STKaiti',serif;
+}
+#score-bar .score { color: #ffd700; font-size: 24px; text-shadow: 0 0 8px rgba(255,200,0,0.5); }
+#score-bar .wave { color: rgba(255,255,255,0.5); font-size: 13px; }
+#score-bar .lives { font-size: 18px; }
+#talisman-hint {
+  position: fixed; top: 50px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,215,0,0.7); font-size: 15px; font-family: 'KaiTi','STKaiti',serif;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="score-bar">
+  <div class="score" id="score-val">0</div>
+  <div class="wave" id="wave-val">第 1 波</div>
+  <div class="lives" id="lives-val">❤️❤️❤️</div>
+</div>
+<div id="talisman-hint"></div>
+<div id="grade-flash"></div>
+<div id="hint">画符斩鬼：横(—) 竖(丨) 斜(╲) 圆(○) 三角(△) 闪电(⚡)<br>画完抬手 → 符文激活 → 金光灭鬼</div>
+
+<script>
+// ============================================================
+// 《钟馗之一笔镇妖》v3 — 画符手感重制版
+// 核心：画符是仪式，不是切菜。蓄力→完成→爆发。
+// ============================================================
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, DPR;
+
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ==================== 音效（Web Audio合成） ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+function playBrush(intensity) {
+  // 毛笔划过纸面的沙沙声
+  ensureAudio();
+  const dur = 0.06;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.03 * intensity * (1 - i / data.length);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass'; filter.frequency.value = 2000 + intensity * 3000; filter.Q.value = 0.5;
+  src.connect(filter).connect(audioCtx.destination);
+  src.start();
+}
+
+function playCharge(progress) {
+  // 蓄力上升音（画的过程中持续）
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 200 + progress * 600;
+  gain.gain.value = 0.02 + progress * 0.04;
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+}
+
+function playActivate(grade) {
+  // 符文激活爆发音
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // 低频冲击
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(grade >= 3 ? 150 : 100, t);
+  osc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
+  gain.gain.setValueAtTime(grade >= 3 ? 0.4 : 0.25, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.4);
+  // 高频金属音
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.type = 'triangle';
+  osc2.frequency.setValueAtTime(grade >= 3 ? 1200 : 800, t);
+  osc2.frequency.exponentialRampToValueAtTime(200, t + 0.2);
+  gain2.gain.setValueAtTime(0.15, t);
+  gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  osc2.connect(gain2).connect(audioCtx.destination);
+  osc2.start(t); osc2.stop(t + 0.25);
+}
+
+function playFail() {
+  // 废符：沉闷的"噗"
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine'; osc.frequency.value = 80;
+  gain.gain.setValueAtTime(0.1, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.15);
+}
+
+function playKill() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(600, t);
+  osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+  gain.gain.setValueAtTime(0.08, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.12);
+}
+
+// ==================== 符咒模板（简化版，够用） ====================
+const TEMPLATES = {
+  '横斩符': { gen: () => Array.from({length:20}, (_,i) => ({x: i*10, y: 0})), color: '#ffd700', range: 100, glyph: '一' },
+  '竖劈符': { gen: () => Array.from({length:20}, (_,i) => ({x: 0, y: i*10})), color: '#ffd700', range: 100, glyph: '丨' },
+  '斜斩符': { gen: () => Array.from({length:20}, (_,i) => ({x: i*8, y: i*8})), color: '#ffaa00', range: 90, glyph: '╲' },
+  '圆封符': { gen: () => Array.from({length:30}, (_,i) => { const a=(i/30)*Math.PI*2; return {x:50+Math.cos(a)*50, y:50+Math.sin(a)*50}; }), color: '#88ddff', range: 120, glyph: '○' },
+  '三角镇': { gen: () => { const p=[]; for(let i=0;i<10;i++) p.push({x:50+i*5,y:100-i*10}); for(let i=0;i<10;i++) p.push({x:100-i*10,y:0}); for(let i=0;i<10;i++) p.push({x:i*5,y:i*10}); return p; }, color: '#ff6600', range: 90, glyph: '△' },
+  '雷符':   { gen: () => [{x:30,y:0},{x:55,y:35},{x:25,y:55},{x:65,y:90},{x:35,y:110},{x:70,y:140}], color: '#aaeeff', range: 140, glyph: '⚡' },
+};
+
+// 预处理模板
+const TPL_LIST = Object.entries(TEMPLATES).map(([name, cfg]) => {
+  const raw = cfg.gen();
+  return { name, ...cfg, points: normalizeStroke(raw) };
+});
+
+function normalizeStroke(pts) {
+  // 重采样到32点 + 缩放到单位正方形 + 居中
+  const resampled = resample(pts, 32);
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  for (const p of resampled) { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }
+  const w = (maxX-minX)||1, h = (maxY-minY)||1;
+  const s = Math.max(w, h);
+  return resampled.map(p => ({ x: (p.x - minX)/s - 0.5, y: (p.y - minY)/s - 0.5 }));
+}
+
+function resample(pts, n) {
+  if (pts.length < 2) return pts;
+  let totalLen = 0;
+  for (let i=1;i<pts.length;i++) totalLen += Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+  const interval = totalLen / (n-1);
+  const out = [{...pts[0]}];
+  let D = 0;
+  const copy = pts.map(p=>({...p}));
+  for (let i=1; i<copy.length; i++) {
+    const d = Math.hypot(copy[i].x-copy[i-1].x, copy[i].y-copy[i-1].y);
+    if (D + d >= interval) {
+      const t = (interval - D) / d;
+      const np = { x: copy[i-1].x + t*(copy[i].x-copy[i-1].x), y: copy[i-1].y + t*(copy[i].y-copy[i-1].y) };
+      out.push(np);
+      copy.splice(i, 0, np);
+      D = 0;
+    } else D += d;
+  }
+  while (out.length < n) out.push({...copy[copy.length-1]});
+  return out.slice(0, n);
+}
+
+function recognizeStroke(pts) {
+  if (pts.length < 8) return null;
+  const norm = normalizeStroke(pts.map(p=>({x:p.x,y:p.y})));
+  let best = null, bestDist = Infinity;
+  for (const tpl of TPL_LIST) {
+    let dist = 0;
+    for (let i=0; i<32; i++) {
+      dist += Math.hypot(norm[i].x - tpl.points[i].x, norm[i].y - tpl.points[i].y);
+    }
+    dist /= 32;
+    if (dist < bestDist) { bestDist = dist; best = tpl; }
+  }
+  // 距离→分数（0~1）
+  const score = Math.max(0, 1 - bestDist * 3.5);
+  if (score < 0.35) return null; // 太离谱，废符
+  const grade = score >= 0.85 ? 4 : score >= 0.7 ? 3 : score >= 0.55 ? 2 : 1;
+  return { name: best.name, color: best.color, range: best.range, glyph: best.glyph, score, grade };
+}
+
+// 实时匹配度（画的过程中给反馈）
+function liveMatchScore(pts) {
+  if (pts.length < 6) return 0;
+  const norm = normalizeStroke(pts.map(p=>({x:p.x,y:p.y})));
+  let bestDist = Infinity;
+  for (const tpl of TPL_LIST) {
+    let dist = 0;
+    const n = Math.min(32, norm.length);
+    for (let i=0; i<n; i++) {
+      const ti = Math.floor(i * 32 / n);
+      dist += Math.hypot(norm[i].x - tpl.points[ti].x, norm[i].y - tpl.points[ti].y);
+    }
+    dist /= n;
+    if (dist < bestDist) bestDist = dist;
+  }
+  return Math.max(0, Math.min(1, 1 - bestDist * 3));
+}
+
+// ==================== 游戏状态 ====================
+let state = 'playing';
+let score = 0, lives = 3, wave = 0, combo = 0, lastKillT = 0;
+let ghosts = [], particles = [], floatTexts = [], activations = [];
+let gameTime = 0, lastTime = Date.now();
+let shake = { x: 0, y: 0, power: 0 };
+let slowmo = { active: false, timer: 0 };
+
+// ==================== 画符状态（核心！） ====================
+let drawing = {
+  active: false,
+  points: [],       // 原始点 [{x,y,t}]
+  brushStrokes: [], // 渲染用笔触段 [{x,y,w,alpha}]
+  startTime: 0,
+  matchScore: 0,    // 实时匹配度 0~1
+  chargeLevel: 0,   // 蓄力等级（随匹配度+时间增长）
+  lastBrushSound: 0,
+  inkSplash: [],    // 起笔墨花
+};
+
+// ==================== 鬼怪 ====================
+const GHOST_TYPES = {
+  normal: { hp:1, speed:0.6, r:16, color:'#77bbaa' },
+  fast:   { hp:1, speed:1.2, r:13, color:'#55ccee' },
+  shield: { hp:3, speed:0.45, r:20, color:'#9999bb' },
+  boss:   { hp:20, speed:0.25, r:40, color:'#ff3333' },
+};
+
+const WAVES = [
+  { count:4, types:['normal'] },
+  { count:6, types:['normal','fast'] },
+  { count:8, types:['normal','fast','shield'] },
+  { count:10, types:['normal','fast','shield'] },
+  { count:1, types:['boss'] },
+];
+
+let waveSpawned = 0, waveTotal = 0, lastSpawn = 0, waveDelay = 1000;
+
+function spawnGhost() {
+  const cfg = WAVES[Math.min(wave, WAVES.length-1)];
+  const type = cfg.types[Math.floor(Math.random()*cfg.types.length)];
+  const g = GHOST_TYPES[type];
+  const side = Math.floor(Math.random()*4);
+  let x, y;
+  if (side===0) { x=Math.random()*W; y=-30; }
+  else if (side===1) { x=W+30; y=Math.random()*H; }
+  else if (side===2) { x=Math.random()*W; y=H+30; }
+  else { x=-30; y=Math.random()*H; }
+  ghosts.push({
+    x, y, type, hp: g.hp + Math.floor(wave*0.2), maxHp: g.hp + Math.floor(wave*0.2),
+    r: g.r, color: g.color, speed: g.speed * (1 + wave*0.08),
+    phase: Math.random()*6.28, alive: true, frozen: 0,
+  });
+}
+
+// ==================== 输入处理 ====================
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  ensureAudio();
+  if (state !== 'playing') return;
+  const x = e.clientX, y = e.clientY;
+  drawing.active = true;
+  drawing.points = [{ x, y, t: Date.now() }];
+  drawing.brushStrokes = [{ x, y, w: 8, alpha: 1 }]; // 起笔重
+  drawing.startTime = Date.now();
+  drawing.matchScore = 0;
+  drawing.chargeLevel = 0;
+  drawing.inkSplash = [];
+  // 起笔墨花
+  for (let i = 0; i < 5; i++) {
+    drawing.inkSplash.push({
+      x: x + (Math.random()-0.5)*12,
+      y: y + (Math.random()-0.5)*12,
+      r: 1 + Math.random()*3,
+      alpha: 0.6,
+    });
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!drawing.active) return;
+  const x = e.clientX, y = e.clientY;
+  const last = drawing.points[drawing.points.length - 1];
+  const dist = Math.hypot(x - last.x, y - last.y);
+  if (dist < 4) return; // 去抖
+
+  const now = Date.now();
+  drawing.points.push({ x, y, t: now });
+
+  // 毛笔笔触：速度决定粗细
+  const dt = now - last.t || 16;
+  const speed = dist / dt * 1000; // px/s
+  // 慢=粗（浓墨），快=细（飞白）
+  const w = speed > 900 ? 2.5 : speed > 500 ? 4 : speed > 250 ? 6 : 8;
+  const alpha = speed > 900 ? 0.5 : 0.9; // 快笔飞白半透明
+  drawing.brushStrokes.push({ x, y, w, alpha });
+
+  // 实时匹配度
+  if (drawing.points.length % 4 === 0) {
+    drawing.matchScore = liveMatchScore(drawing.points);
+    drawing.chargeLevel = Math.min(1, drawing.chargeLevel + drawing.matchScore * 0.08);
+    // 蓄力音效
+    if (drawing.chargeLevel > 0.2) playCharge(drawing.chargeLevel);
+  }
+
+  // 笔触音效（节流）
+  if (now - drawing.lastBrushSound > 60) {
+    playBrush(Math.min(1, speed / 800));
+    drawing.lastBrushSound = now;
+  }
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  if (!drawing.active) return;
+  drawing.active = false;
+  activateTalisman();
+});
+
+canvas.addEventListener('pointercancel', () => {
+  drawing.active = false;
+  drawing.brushStrokes = [];
+  drawing.inkSplash = [];
+});
+
+// ==================== 符咒激活（抬手瞬间） ====================
+function activateTalisman() {
+  const pts = drawing.points;
+  const strokes = drawing.brushStrokes;
+  drawing.brushStrokes = [];
+  drawing.inkSplash = [];
+
+  if (pts.length < 8) {
+    // 太短，直接消散
+    spawnInkDissipate(pts);
+    return;
+  }
+
+  const result = recognizeStroke(pts);
+
+  if (!result) {
+    // 废符！墨迹消散
+    playFail();
+    spawnInkDissipate(pts);
+    showGradeFlash('废', '#666');
+    return;
+  }
+
+  // 成功！计算中心点
+  const cx = pts.reduce((s,p) => s+p.x, 0) / pts.length;
+  const cy = pts.reduce((s,p) => s+p.y, 0) / pts.length;
+
+  const gradeNames = ['', '白', '蓝', '紫', '金'];
+  const gradeColors = ['', '#ffffff', '#4488ff', '#cc44ff', '#ffd700'];
+  const gradeMul = [0, 1, 1.5, 2, 3];
+
+  // 激活特效
+  playActivate(result.grade);
+  showGradeFlash(gradeNames[result.grade], gradeColors[result.grade]);
+
+  // 震动
+  if (navigator.vibrate) {
+    if (result.grade >= 4) navigator.vibrate([30, 20, 50]);
+    else if (result.grade >= 3) navigator.vibrate([20, 10, 30]);
+    else navigator.vibrate(20);
+  }
+
+  // 慢动作（金/紫）
+  if (result.grade >= 3) {
+    slowmo.active = true;
+    slowmo.timer = result.grade >= 4 ? 400 : 250;
+  }
+
+  // 屏幕震动
+  shake.power = result.grade >= 4 ? 12 : result.grade >= 3 ? 8 : 4;
+
+  // 创建激活特效对象
+  activations.push({
+    x: cx, y: cy,
+    glyph: result.glyph,
+    color: result.color,
+    grade: result.grade,
+    range: result.range * (1 + (result.grade - 1) * 0.2),
+    timer: 0,
+    duration: 600,
+    strokes: strokes.map(s => ({...s})), // 保留笔画轨迹用于动画
+    pts: pts.map(p => ({...p})),
+  });
+
+  // 范围杀鬼
+  const range = result.range * (1 + (result.grade - 1) * 0.2);
+  const dmg = Math.ceil(gradeMul[result.grade]);
+  let killed = 0;
+
+  for (const g of ghosts) {
+    if (!g.alive) continue;
+    const d = Math.hypot(g.x - cx, g.y - cy);
+    if (d < range + g.r) {
+      g.hp -= dmg;
+      if (g.hp <= 0) {
+        g.alive = false;
+        killed++;
+        spawnKillParticles(g.x, g.y, g.color);
+        playKill();
+      } else {
+        // 受击闪白
+        g.hitFlash = 150;
+      }
+    }
+  }
+
+  // 计分
+  if (killed > 0) {
+    const now = Date.now();
+    combo = (now - lastKillT < 2000) ? combo + killed : killed;
+    lastKillT = now;
+    const gained = killed * 10 * combo * gradeMul[result.grade];
+    score += Math.floor(gained);
+    document.getElementById('score-val').textContent = score;
+    floatTexts.push({ x: cx, y: cy - 30, text: `+${Math.floor(gained)}`, color: gradeColors[result.grade], life: 1000, size: 16 + combo * 2 });
+    if (combo >= 3) {
+      floatTexts.push({ x: cx, y: cy - 60, text: `${combo}连斩!`, color: '#ff4444', life: 1200, size: 22 });
+    }
+  }
+
+  drawing.points = [];
+}
+
+// 废符墨迹消散
+function spawnInkDissipate(pts) {
+  for (let i = 0; i < pts.length; i += 3) {
+    particles.push({
+      x: pts[i].x, y: pts[i].y,
+      vx: (Math.random()-0.5)*2, vy: Math.random()*1.5 + 0.5,
+      r: 2 + Math.random()*3, color: '#2a2a3e',
+      life: 500 + Math.random()*300, maxLife: 800, gravity: 0.05,
+    });
+  }
+}
+
+function spawnKillParticles(x, y, color) {
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * 6.28;
+    const spd = 2 + Math.random() * 5;
+    particles.push({
+      x, y, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+      r: 2 + Math.random()*3, color: Math.random()>0.5 ? color : '#ffd700',
+      life: 500 + Math.random()*400, maxLife: 900, gravity: 0.03,
+    });
+  }
+}
+
+function showGradeFlash(text, color) {
+  const el = document.getElementById('grade-flash');
+  el.textContent = text;
+  el.style.color = color;
+  el.style.textShadow = `0 0 30px ${color}, 0 0 60px ${color}`;
+  el.className = 'show';
+  setTimeout(() => { el.className = 'hide'; }, 200);
+  setTimeout(() => { el.className = ''; }, 700);
+}
+
+// ==================== 主循环 ====================
+function loop() {
+  const now = Date.now();
+  let dt = Math.min(now - lastTime, 50);
+  lastTime = now;
+
+  // 慢动作
+  if (slowmo.active) {
+    slowmo.timer -= dt;
+    if (slowmo.timer <= 0) slowmo.active = false;
+    else dt *= 0.3;
+  }
+
+  gameTime += dt;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  // 波次
+  if (waveDelay > 0) { waveDelay -= dt; }
+  else {
+    const cfg = WAVES[Math.min(wave, WAVES.length-1)];
+    if (waveSpawned < cfg.count) {
+      if (gameTime - lastSpawn > Math.max(400, 1200 - wave*100)) {
+        spawnGhost(); waveSpawned++; lastSpawn = gameTime;
+      }
+    } else if (ghosts.filter(g=>g.alive).length === 0) {
+      wave++; waveSpawned = 0; waveDelay = 2000;
+      document.getElementById('wave-val').textContent = wave >= WAVES.length ? 'BOSS' : `第 ${wave+1} 波`;
+    }
+  }
+
+  // 鬼移动（朝屏幕中心）
+  const cx = W/2, cy = H/2;
+  for (const g of ghosts) {
+    if (!g.alive) continue;
+    g.phase += 0.03;
+    if (g.frozen > 0) { g.frozen -= dt; continue; }
+    const dx = cx - g.x, dy = cy - g.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 30) {
+      // 到达中心，扣血
+      g.alive = false;
+      lives--;
+      document.getElementById('lives-val').textContent = '❤️'.repeat(Math.max(0,lives)) + '🖤'.repeat(Math.max(0,3-lives));
+      shake.power = 10;
+      if (navigator.vibrate) navigator.vibrate(100);
+      if (lives <= 0) { state = 'dead'; }
+      continue;
+    }
+    const spd = g.speed * (dt/16);
+    g.x += (dx/dist) * spd + Math.sin(g.phase)*0.3;
+    g.y += (dy/dist) * spd;
+    if (g.hitFlash) g.hitFlash -= dt;
+  }
+  ghosts = ghosts.filter(g => g.alive);
+
+  // 粒子
+  for (const p of particles) {
+    p.life -= dt;
+    p.x += p.vx * (dt/16);
+    p.y += p.vy * (dt/16);
+    p.vy += p.gravity;
+    p.vx *= 0.98;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  // 浮动文字
+  for (const ft of floatTexts) { ft.life -= dt; ft.y -= 0.8 * (dt/16); }
+  floatTexts = floatTexts.filter(ft => ft.life > 0);
+
+  // 激活特效
+  for (const a of activations) { a.timer += dt; }
+  activations = activations.filter(a => a.timer < a.duration);
+
+  // 震屏衰减
+  if (shake.power > 0.3) {
+    shake.x = (Math.random()-0.5) * shake.power;
+    shake.y = (Math.random()-0.5) * shake.power;
+    shake.power *= 0.88;
+  } else { shake.x = 0; shake.y = 0; shake.power = 0; }
+}
+
+// ==================== 渲染 ====================
+function render() {
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+  ctx.clearRect(-20, -20, W+40, H+40);
+
+  drawBackground();
+  drawCenter();
+  drawGhosts();
+  drawActivations();
+  drawCurrentStroke(); // 正在画的符（最重要！）
+  drawParticles();
+  drawFloatTexts();
+
+  ctx.restore();
+
+  if (state === 'dead') drawDeathScreen();
+}
+
+function drawBackground() {
+  const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+  grad.addColorStop(0, '#12122a');
+  grad.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 画符时背景压暗（聚焦感）
+  if (drawing.active) {
+    ctx.fillStyle = `rgba(0,0,0,${0.15 + drawing.chargeLevel * 0.15})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawCenter() {
+  // 钟馗（简化：发光圆 + 印章）
+  const pulse = 1 + Math.sin(gameTime * 0.003) * 0.03;
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.scale(pulse, pulse);
+
+  // 光环
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = '#ffd700';
+  ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 30;
+  ctx.beginPath(); ctx.arc(0, 0, 35, 0, 6.28); ctx.fill();
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+  // 身体
+  ctx.fillStyle = '#cc2222';
+  ctx.beginPath(); ctx.arc(0, 3, 18, 0, 6.28); ctx.fill();
+  // 头
+  ctx.fillStyle = '#ffcc99';
+  ctx.beginPath(); ctx.arc(0, -10, 11, 0, 6.28); ctx.fill();
+  // 帽
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-13, -23, 26, 6);
+  ctx.fillRect(-2, -29, 4, 8);
+  // 眼
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(-4, -11, 1.5, 0, 6.28); ctx.arc(4, -11, 1.5, 0, 6.28); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawGhosts() {
+  for (const g of ghosts) {
+    ctx.save();
+    ctx.translate(g.x, g.y + Math.sin(g.phase)*3);
+
+    // 受击闪白
+    if (g.hitFlash > 0) { ctx.globalAlpha = 0.5 + Math.sin(g.hitFlash*0.1)*0.5; }
+    // 冻结
+    if (g.frozen > 0) { ctx.globalAlpha = 0.6; ctx.shadowColor = '#88ddff'; ctx.shadowBlur = 8; }
+
+    // 身体
+    ctx.fillStyle = g.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, g.r, Math.PI, 0);
+    // 波浪底
+    for (let i = 0; i <= 4; i++) {
+      const wx = g.r - (2*g.r*i/4);
+      const wy = g.r*0.5 + Math.sin(g.phase + i*1.5)*3;
+      ctx.lineTo(wx, wy);
+    }
+    ctx.closePath(); ctx.fill();
+
+    // 眼睛
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-g.r*0.3, -g.r*0.1, g.r*0.2, 0, 6.28); ctx.arc(g.r*0.3, -g.r*0.1, g.r*0.2, 0, 6.28); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(-g.r*0.3, -g.r*0.05, g.r*0.09, 0, 6.28); ctx.arc(g.r*0.3, -g.r*0.05, g.r*0.09, 0, 6.28); ctx.fill();
+
+    // 血条
+    if (g.maxHp > 1) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-g.r, -g.r-8, g.r*2, 3);
+      ctx.fillStyle = g.hp/g.maxHp > 0.3 ? '#44dd44' : '#dd4444';
+      ctx.fillRect(-g.r, -g.r-8, g.r*2*(g.hp/g.maxHp), 3);
+    }
+
+    ctx.restore();
+  }
+}
+
+// ==================== 核心：画符渲染 ====================
+function drawCurrentStroke() {
+  if (!drawing.active && drawing.brushStrokes.length === 0) return;
+  const strokes = drawing.brushStrokes;
+  if (strokes.length < 2) return;
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 第一层：墨迹（深色底）
+  for (let i = 1; i < strokes.length; i++) {
+    const s = strokes[i], prev = strokes[i-1];
+    const progress = i / strokes.length;
+    ctx.globalAlpha = s.alpha * 0.9;
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = s.w;
+    ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(s.x, s.y); ctx.stroke();
+  }
+
+  // 第二层：金光（随蓄力增强）—— 这是"画符感"的关键
+  const charge = drawing.chargeLevel;
+  if (charge > 0.05) {
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 4 + charge * 16;
+    for (let i = 1; i < strokes.length; i++) {
+      const s = strokes[i], prev = strokes[i-1];
+      const progress = i / strokes.length;
+      // 越新的笔画越亮（能量在笔尖聚集）
+      const brightness = progress * charge;
+      ctx.globalAlpha = brightness * 0.7;
+      ctx.strokeStyle = `hsl(${45 - charge*10}, 100%, ${50 + charge*20}%)`;
+      ctx.lineWidth = s.w * (0.5 + charge * 0.5);
+      ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(s.x, s.y); ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  // 第三层：笔尖光点
+  if (drawing.active && strokes.length > 0) {
+    const tip = strokes[strokes.length - 1];
+    const glowR = 4 + charge * 8;
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 10 + charge * 20;
+    ctx.beginPath(); ctx.arc(tip.x, tip.y, glowR, 0, 6.28); ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 蓄力粒子（从笔尖散发）
+    if (charge > 0.3 && Math.random() < charge * 0.5) {
+      const a = Math.random() * 6.28;
+      const d = 5 + Math.random() * 10;
+      particles.push({
+        x: tip.x + Math.cos(a)*d, y: tip.y + Math.sin(a)*d,
+        vx: Math.cos(a)*0.5, vy: Math.sin(a)*0.5 - 0.5,
+        r: 1 + Math.random()*2, color: '#ffd700',
+        life: 300, maxLife: 300, gravity: -0.02,
+      });
+    }
+  }
+
+  // 起笔墨花
+  ctx.globalAlpha = 1;
+  for (const sp of drawing.inkSplash) {
+    ctx.globalAlpha = sp.alpha;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r, 0, 6.28); ctx.fill();
+    sp.alpha -= 0.005;
+  }
+  drawing.inkSplash = drawing.inkSplash.filter(s => s.alpha > 0);
+
+  ctx.restore();
+}
+
+// ==================== 激活特效渲染 ====================
+function drawActivations() {
+  for (const a of activations) {
+    const progress = a.timer / a.duration;
+    ctx.save();
+
+    if (progress < 0.3) {
+      // 阶段1：笔画轨迹闪金光（0~30%）
+      const p = progress / 0.3;
+      ctx.globalAlpha = 1 - p * 0.3;
+      ctx.strokeStyle = a.color;
+      ctx.lineWidth = 3 + a.grade;
+      ctx.shadowColor = a.color;
+      ctx.shadowBlur = 20;
+      ctx.lineCap = 'round';
+      if (a.pts.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(a.pts[0].x, a.pts[0].y);
+        const drawCount = Math.floor(a.pts.length * Math.min(1, p * 1.5));
+        for (let i = 1; i < drawCount; i++) {
+          ctx.lineTo(a.pts[i].x, a.pts[i].y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    if (progress > 0.15 && progress < 0.6) {
+      // 阶段2：符文成型（15%~60%）
+      const p = (progress - 0.15) / 0.45;
+      const scale = 0.5 + p * 0.5;
+      ctx.globalAlpha = Math.sin(p * Math.PI) * 0.9;
+      ctx.translate(a.x, a.y);
+      ctx.scale(scale, scale);
+      ctx.font = `bold ${40 + a.grade * 10}px "KaiTi","STKaiti",serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = a.color;
+      ctx.shadowColor = a.color; ctx.shadowBlur = 30;
+      ctx.fillText(a.glyph, 0, 0);
+    }
+
+    if (progress > 0.3) {
+      // 阶段3：冲击波扩散（30%~100%）
+      const p = (progress - 0.3) / 0.7;
+      const radius = a.range * p;
+      ctx.globalAlpha = (1 - p) * 0.6;
+      ctx.strokeStyle = a.color;
+      ctx.lineWidth = 3 * (1 - p) + 1;
+      ctx.shadowColor = a.color; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(a.x, a.y, radius, 0, 6.28); ctx.stroke();
+
+      // 内圈
+      if (p < 0.5) {
+        ctx.globalAlpha = (1 - p*2) * 0.3;
+        ctx.fillStyle = a.color;
+        ctx.beginPath(); ctx.arc(a.x, a.y, radius * 0.6, 0, 6.28); ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = Math.max(0, p.life / p.maxLife);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * alpha, 0, 6.28); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFloatTexts() {
+  for (const ft of floatTexts) {
+    const alpha = Math.max(0, ft.life / 1000);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `bold ${ft.size}px "KaiTi","STKaiti",serif`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = ft.color;
+    ctx.shadowColor = ft.color; ctx.shadowBlur = 8;
+    ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.restore();
+  }
+}
+
+function drawDeathScreen() {
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 36px "KaiTi","STKaiti",serif';
+  ctx.fillStyle = '#cc2222';
+  ctx.fillText('魂归酆都', W/2, H*0.35);
+  ctx.font = '20px sans-serif';
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText(`得分: ${score}`, W/2, H*0.45);
+  ctx.font = '15px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('点击重新开始', W/2, H*0.55);
+
+  canvas.onclick = () => {
+    canvas.onclick = null;
+    score = 0; lives = 3; wave = 0; combo = 0;
+    ghosts = []; particles = []; floatTexts = []; activations = [];
+    waveSpawned = 0; waveDelay = 1000; state = 'playing';
+    document.getElementById('score-val').textContent = '0';
+    document.getElementById('lives-val').textContent = '❤️❤️❤️';
+    document.getElementById('wave-val').textContent = '第 1 波';
+  };
+}
+
+// ==================== 启动 ====================
+waveTotal = WAVES[0].count;
+loop();
+</script>
+</body>
+</html>

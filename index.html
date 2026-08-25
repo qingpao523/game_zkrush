@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>钟馗之一笔镇妖</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0a0a1a;
+  font-family: 'STKaiti', 'KaiTi', 'SimSun', serif;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#gameCanvas {
+  display: block;
+  width: 100%; height: 100%;
+  cursor: crosshair;
+}
+/* UI Overlay */
+#ui-overlay {
+  position: fixed; top: 0; left: 0; right: 0;
+  padding: 12px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none; z-index: 10;
+}
+.ui-box {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,200,50,0.3);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: #ffd700;
+  font-size: 16px;
+  text-shadow: 0 0 8px rgba(255,200,0,0.5);
+}
+#combo-display {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px; color: #ff4444;
+  text-shadow: 0 0 20px rgba(255,0,0,0.8);
+  pointer-events: none; z-index: 20;
+  opacity: 0; transition: opacity 0.3s;
+  font-weight: bold;
+}
+/* Start Screen */
+#start-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, #1a1a3a 0%, #0a0a1a 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100;
+}
+#start-screen h1 {
+  font-size: 42px; color: #ffd700;
+  text-shadow: 0 0 30px rgba(255,200,0,0.6), 0 4px 8px rgba(0,0,0,0.8);
+  margin-bottom: 8px; letter-spacing: 6px;
+}
+#start-screen .subtitle {
+  font-size: 16px; color: #aaa;
+  margin-bottom: 40px; letter-spacing: 2px;
+}
+#start-btn {
+  padding: 14px 48px;
+  font-size: 22px; font-family: inherit;
+  background: linear-gradient(135deg, #8b0000, #cc0000);
+  color: #ffd700; border: 2px solid #ffd700;
+  border-radius: 30px; cursor: pointer;
+  transition: all 0.3s; letter-spacing: 4px;
+  pointer-events: all;
+}
+#start-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255,200,0,0.4); }
+.instructions {
+  margin-top: 30px; color: #888; font-size: 14px;
+  text-align: center; line-height: 2;
+}
+/* Game Over Screen */
+#gameover-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100;
+}
+#gameover-screen h2 { font-size: 36px; color: #ff4444; margin-bottom: 16px; }
+#gameover-screen .final-score { font-size: 28px; color: #ffd700; margin-bottom: 8px; }
+#gameover-screen .stats { color: #aaa; font-size: 16px; margin-bottom: 30px; }
+#restart-btn {
+  padding: 12px 40px; font-size: 20px; font-family: inherit;
+  background: linear-gradient(135deg, #8b0000, #cc0000);
+  color: #ffd700; border: 2px solid #ffd700;
+  border-radius: 25px; cursor: pointer; letter-spacing: 3px;
+}
+/* Wave Announcement */
+#wave-announce {
+  position: fixed; top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px; color: #ffd700;
+  text-shadow: 0 0 20px rgba(255,200,0,0.8);
+  pointer-events: none; z-index: 30;
+  opacity: 0;
+}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui-overlay">
+  <div class="ui-box" id="score-display">分数: 0</div>
+  <div class="ui-box" id="wave-display">第 1 波</div>
+  <div class="ui-box" id="lives-display">❤❤❤</div>
+</div>
+
+<div id="combo-display"></div>
+<div id="wave-announce"></div>
+
+<div id="start-screen">
+  <h1>钟馗之一笔镇妖</h1>
+  <div class="subtitle">— 手势画符 · 一击必杀 —</div>
+  <button id="start-btn">开始镇妖</button>
+  <div class="instructions">
+    🖱️ 按住鼠标 / 手指滑动 画符斩鬼<br>
+    ⚡ 画得越快越流畅，斩杀范围越大<br>
+    🎯 一笔穿过越多鬼，连击越高<br>
+    👻 别让鬼碰到中心的钟馗！
+  </div>
+</div>
+
+<div id="gameover-screen">
+  <h2>钟馗倒下了...</h2>
+  <div class="final-score" id="final-score">最终分数: 0</div>
+  <div class="stats" id="final-stats">击杀: 0 | 最高连击: 0 | 存活波次: 0</div>
+  <button id="restart-btn">再战一次</button>
+</div>
+
+<script>
+// ============================================================
+// 《钟馗之一笔镇妖》 - H5 Canvas 原型
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- 全局配置 ---
+const CONFIG = {
+  GHOST_SPAWN_INTERVAL: 1200,   // 鬼生成间隔(ms)
+  GHOST_BASE_SPEED: 0.8,        // 鬼基础速度
+  GHOST_RADIUS: 18,             // 鬼半径
+  KILL_RADIUS: 28,              // 斩杀判定半径
+  MAX_LIVES: 3,
+  WAVE_GHOST_COUNT: [5, 8, 10, 12, 15, 18, 20, 25],
+  COMBO_TIMEOUT: 1500,          // 连击超时(ms)
+  INK_TRAIL_LENGTH: 40,         // 墨迹拖尾长度
+  PARTICLE_COUNT: 12,           // 死亡粒子数
+  SCREEN_SHAKE_DECAY: 0.9,
+};
+
+// --- 游戏状态 ---
+let gameState = 'start'; // start, playing, gameover
+let score = 0;
+let lives = CONFIG.MAX_LIVES;
+let wave = 1;
+let ghostsKilled = 0;
+let maxCombo = 0;
+let combo = 0;
+let lastKillTime = 0;
+let ghosts = [];
+let particles = [];
+let inkTrail = [];
+let floatingTexts = [];
+let isDrawing = false;
+let drawPoints = [];
+let screenShake = { x: 0, y: 0, intensity: 0 };
+let waveGhostsRemaining = 0;
+let waveGhostsSpawned = 0;
+let lastSpawnTime = 0;
+let gameTime = 0;
+let bgLanterns = [];
+let zhongkui = { x: 0, y: 0, radius: 30, pulsePhase: 0 };
+
+// --- 音效系统 (Web Audio API) ---
+let audioCtx = null;
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playSound(type) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  
+  switch(type) {
+    case 'slash':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+      break;
+    case 'kill':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+      break;
+    case 'combo':
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400 + combo * 100, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800 + combo * 150, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+      break;
+    case 'hurt':
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+      break;
+    case 'perfect':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+      break;
+  }
+}
+
+// --- 画布尺寸 ---
+function resizeCanvas() {
+  canvas.width = window.innerWidth * window.devicePixelRatio;
+  canvas.height = window.innerHeight * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  zhongkui.x = window.innerWidth / 2;
+  zhongkui.y = window.innerHeight / 2;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// --- 背景灯笼初始化 ---
+function initLanterns() {
+  bgLanterns = [];
+  for (let i = 0; i < 8; i++) {
+    bgLanterns.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight * 0.6,
+      size: 12 + Math.random() * 16,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.3 + Math.random() * 0.5
+    });
+  }
+}
+initLanterns();
+
+// ============================================================
+// 鬼怪类
+// ============================================================
+class Ghost {
+  constructor(type = 'normal') {
+    this.type = type;
+    this.radius = CONFIG.GHOST_RADIUS;
+    this.alive = true;
+    this.hp = type === 'shield' ? 2 : type === 'boss' ? 30 : 1;
+    this.maxHp = this.hp;
+    
+    // 从屏幕边缘生成
+    const side = Math.floor(Math.random() * 4);
+    const w = window.innerWidth, h = window.innerHeight;
+    switch(side) {
+      case 0: this.x = Math.random() * w; this.y = -30; break;
+      case 1: this.x = w + 30; this.y = Math.random() * h; break;
+      case 2: this.x = Math.random() * w; this.y = h + 30; break;
+      case 3: this.x = -30; this.y = Math.random() * h; break;
+    }
+    
+    // 速度（朝钟馗方向）
+    const speed = CONFIG.GHOST_BASE_SPEED * (1 + wave * 0.12);
+    this.speed = type === 'fast' ? speed * 1.8 : type === 'boss' ? speed * 0.3 : speed;
+    
+    // 视觉属性
+    this.phase = Math.random() * Math.PI * 2;
+    this.wobble = 0;
+    this.color = this.getColor();
+    this.eyeOffset = 0;
+    this.deathTimer = 0;
+    this.opacity = 1;
+    
+    // 特殊行为
+    this.dodgeCooldown = 0;
+    this.visible = type !== 'hidden';
+    this.revealTimer = 0;
+  }
+  
+  getColor() {
+    switch(this.type) {
+      case 'fast': return '#44ff88';
+      case 'shield': return '#8888ff';
+      case 'split': return '#cc44ff';
+      case 'hidden': return '#666666';
+      case 'boss': return '#ff2222';
+      default: return '#aaddff';
+    }
+  }
+  
+  update(dt) {
+    if (!this.alive) {
+      this.deathTimer += dt;
+      this.opacity = Math.max(0, 1 - this.deathTimer / 300);
+      return this.deathTimer < 300;
+    }
+    
+    // 朝钟馗移动
+    const dx = zhongkui.x - this.x;
+    const dy = zhongkui.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist > 1) {
+      this.x += (dx / dist) * this.speed * (dt / 16);
+      this.y += (dy / dist) * this.speed * (dt / 16);
+    }
+    
+    // 摇摆动画
+    this.phase += dt * 0.005;
+    this.wobble = Math.sin(this.phase) * 3;
+    
+    // 隐藏鬼靠近时现形
+    if (this.type === 'hidden' && dist < 150) {
+      this.visible = true;
+      this.revealTimer += dt;
+    }
+    
+    // 躲避行为（高波次）
+    if (wave >= 4 && this.dodgeCooldown <= 0 && isDrawing && drawPoints.length > 3) {
+      const lastPt = drawPoints[drawPoints.length - 1];
+      const dToDraw = Math.sqrt((this.x - lastPt.x) ** 2 + (this.y - lastPt.y) ** 2);
+      if (dToDraw < 80) {
+        // 横向闪避
+        const perpX = -dy / dist;
+        const perpY = dx / dist;
+        this.x += perpX * 3;
+        this.y += perpY * 3;
+        this.dodgeCooldown = 500;
+      }
+    }
+    if (this.dodgeCooldown > 0) this.dodgeCooldown -= dt;
+    
+    // 碰到钟馗
+    if (dist < zhongkui.radius + this.radius) {
+      this.alive = false;
+      this.deathTimer = 300;
+      hurtPlayer();
+      return false;
+    }
+    
+    return true;
+  }
+  
+  draw(ctx) {
+    if (!this.visible && this.type === 'hidden') {
+      // 画一个灯笼/花瓶伪装
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = '#cc6633';
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y, 10, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    
+    ctx.save();
+    ctx.globalAlpha = this.opacity;
+    ctx.translate(this.x, this.y + this.wobble);
+    
+    // 身体（Q版圆形）
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius);
+    gradient.addColorStop(0, this.color);
+    gradient.addColorStop(1, 'rgba(0,0,0,0.3)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 幽灵尾巴（波浪底部）
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.opacity * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-this.radius * 0.7, this.radius * 0.5);
+    for (let i = 0; i <= 6; i++) {
+      const px = -this.radius * 0.7 + (this.radius * 1.4 / 6) * i;
+      const py = this.radius * 0.5 + Math.sin(this.phase * 3 + i) * 5 + 8;
+      ctx.lineTo(px, py);
+    }
+    ctx.lineTo(this.radius * 0.7, this.radius * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = this.opacity;
+    
+    // 眼睛
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-6, -3, 5, 0, Math.PI * 2);
+    ctx.arc(6, -3, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(-5 + this.eyeOffset, -3, 2.5, 0, Math.PI * 2);
+    ctx.arc(7 + this.eyeOffset, -3, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 嘴巴
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 5, 4, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.stroke();
+    
+    // 盾牌鬼的盾
+    if (this.type === 'shield') {
+      ctx.fillStyle = 'rgba(100,100,200,0.7)';
+      ctx.fillRect(-this.radius - 5, -this.radius, 6, this.radius * 2);
+    }
+    
+    // BOSS血条
+    if (this.type === 'boss') {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-25, -this.radius - 12, 50, 6);
+      ctx.fillStyle = '#ff3333';
+      ctx.fillRect(-25, -this.radius - 12, 50 * (this.hp / this.maxHp), 6);
+    }
+    
+    ctx.restore();
+  }
+  
+  takeDamage(dmg) {
+    this.hp -= dmg;
+    if (this.hp <= 0) {
+      this.alive = false;
+      this.deathTimer = 0;
+      return true; // died
+    }
+    return false;
+  }
+}
+
+// ============================================================
+// 粒子系统
+// ============================================================
+class Particle {
+  constructor(x, y, color, type = 'ink') {
+    this.x = x; this.y = y;
+    this.color = color;
+    this.type = type;
+    this.life = 1;
+    this.decay = 0.02 + Math.random() * 0.03;
+    
+    if (type === 'ink') {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 4;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+      this.size = 2 + Math.random() * 5;
+    } else if (type === 'gold') {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2 + Math.random() * 5;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed - 2;
+      this.size = 1 + Math.random() * 3;
+      this.decay = 0.015 + Math.random() * 0.02;
+    } else if (type === 'coin') {
+      this.vx = (Math.random() - 0.5) * 3;
+      this.vy = -3 - Math.random() * 4;
+      this.gravity = 0.15;
+      this.size = 4;
+      this.decay = 0.012;
+    }
+  }
+  
+  update(dt) {
+    this.life -= this.decay * (dt / 16);
+    this.x += this.vx * (dt / 16);
+    this.y += this.vy * (dt / 16);
+    if (this.type === 'coin') {
+      this.vy += this.gravity * (dt / 16);
+    }
+    if (this.type === 'ink') {
+      this.vx *= 0.96;
+      this.vy *= 0.96;
+    }
+    return this.life > 0;
+  }
+  
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = this.color;
+    if (this.type === 'coin') {
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#aa8800';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ============================================================
+// 浮动文字
+// ============================================================
+class FloatingText {
+  constructor(x, y, text, color, size = 20) {
+    this.x = x; this.y = y;
+    this.text = text; this.color = color;
+    this.size = size;
+    this.life = 1;
+    this.vy = -1.5;
+  }
+  update(dt) {
+    this.life -= 0.02 * (dt / 16);
+    this.y += this.vy * (dt / 16);
+    return this.life > 0;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = this.color;
+    ctx.font = `bold ${this.size}px STKaiti, KaiTi, serif`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 10;
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.restore();
+  }
+}
+
+// ============================================================
+// 核心游戏逻辑
+// ============================================================
+
+function hurtPlayer() {
+  lives--;
+  playSound('hurt');
+  screenShake.intensity = 12;
+  updateUI();
+  if (lives <= 0) {
+    gameOver();
+  }
+}
+
+function spawnGhost() {
+  const types = ['normal'];
+  if (wave >= 2) types.push('fast');
+  if (wave >= 3) types.push('shield');
+  if (wave >= 4) types.push('split');
+  if (wave >= 5) types.push('hidden');
+  
+  const type = types[Math.floor(Math.random() * types.length)];
+  ghosts.push(new Ghost(type));
+  waveGhostsSpawned++;
+}
+
+function spawnBoss() {
+  const boss = new Ghost('boss');
+  boss.radius = 40;
+  ghosts.push(boss);
+  floatingTexts.push(new FloatingText(
+    window.innerWidth / 2, window.innerHeight * 0.3,
+    '百鬼王驾到！', '#ff4444', 32
+  ));
+}
+
+function startWave() {
+  const count = CONFIG.WAVE_GHOST_COUNT[Math.min(wave - 1, CONFIG.WAVE_GHOST_COUNT.length - 1)];
+  waveGhostsRemaining = count;
+  waveGhostsSpawned = 0;
+  lastSpawnTime = gameTime;
+  
+  // 波次公告
+  const announce = document.getElementById('wave-announce');
+  announce.textContent = `第 ${wave} 波`;
+  announce.style.opacity = '1';
+  setTimeout(() => { announce.style.opacity = '0'; }, 1500);
+  
+  updateUI();
+}
+
+function checkWaveComplete() {
+  if (waveGhostsSpawned >= waveGhostsRemaining && ghosts.filter(g => g.alive).length === 0) {
+    wave++;
+    if (wave > 8) {
+      // 最终BOSS
+      spawnBoss();
+      waveGhostsRemaining = 999;
+      waveGhostsSpawned = 999;
+    } else {
+      setTimeout(() => startWave(), 2000);
+    }
+  }
+}
+
+function killGhost(ghost, quality) {
+  const died = ghost.takeDamage(quality >= 0.9 ? 3 : quality >= 0.7 ? 2 : 1);
+  
+  if (died) {
+    ghostsKilled++;
+    
+    // 连击
+    const now = Date.now();
+    if (now - lastKillTime < CONFIG.COMBO_TIMEOUT) {
+      combo++;
+    } else {
+      combo = 1;
+    }
+    lastKillTime = now;
+    maxCombo = Math.max(maxCombo, combo);
+    
+    // 分数
+    const baseScore = ghost.type === 'boss' ? 500 : 10;
+    const comboMultiplier = 1 + (combo - 1) * 0.5;
+    const qualityMultiplier = quality >= 0.9 ? 3 : quality >= 0.7 ? 2 : 1;
+    const gained = Math.floor(baseScore * comboMultiplier * qualityMultiplier);
+    score += gained;
+    
+    // 特效
+    spawnDeathParticles(ghost.x, ghost.y, ghost.color);
+    floatingTexts.push(new FloatingText(
+      ghost.x, ghost.y - 20, `+${gained}`, '#ffd700', 16 + Math.min(combo, 10)
+    ));
+    
+    // 音效
+    playSound('kill');
+    if (combo >= 3) playSound('combo');
+    if (quality >= 0.9) playSound('perfect');
+    
+    // 屏幕震动
+    screenShake.intensity = Math.min(4 + combo, 12);
+    
+    // 分身鬼分裂
+    if (ghost.type === 'split' && ghost.radius > 10) {
+      for (let i = 0; i < 2; i++) {
+        const child = new Ghost('normal');
+        child.x = ghost.x + (i === 0 ? -15 : 15);
+        child.y = ghost.y;
+        child.radius = 12;
+        child.speed *= 1.3;
+        ghosts.push(child);
+      }
+    }
+    
+    // 连击显示
+    if (combo >= 3) {
+      showCombo(combo);
+    }
+    
+    updateUI();
+  }
+}
+
+function spawnDeathParticles(x, y, color) {
+  for (let i = 0; i < CONFIG.PARTICLE_COUNT; i++) {
+    particles.push(new Particle(x, y, color, 'ink'));
+  }
+  for (let i = 0; i < 6; i++) {
+    particles.push(new Particle(x, y, '#ffd700', 'gold'));
+  }
+  // 铜钱
+  for (let i = 0; i < 3; i++) {
+    particles.push(new Particle(x, y, '#ffd700', 'coin'));
+  }
+}
+
+function showCombo(c) {
+  const el = document.getElementById('combo-display');
+  const texts = ['', '', '', '三连斩！', '四连绝！', '五连·鬼哭！', '六连·神嚎！', '七连·天崩！'];
+  el.textContent = c >= 8 ? `${c}连·万鬼伏诛！` : (texts[c] || `${c}连斩！`);
+  el.style.opacity = '1';
+  el.style.transform = `translate(-50%, -50%) scale(${1 + c * 0.05})`;
+  setTimeout(() => { el.style.opacity = '0'; }, 800);
+}
+
+// ============================================================
+// 画符系统
+// ============================================================
+
+function startDraw(x, y) {
+  isDrawing = true;
+  drawPoints = [{ x, y, time: Date.now() }];
+  inkTrail = [{ x, y, width: 3, alpha: 1 }];
+}
+
+function moveDraw(x, y) {
+  if (!isDrawing) return;
+  const now = Date.now();
+  const lastPt = drawPoints[drawPoints.length - 1];
+  const dist = Math.sqrt((x - lastPt.x) ** 2 + (y - lastPt.y) ** 2);
+  
+  if (dist > 3) { // 最小距离阈值
+    drawPoints.push({ x, y, time: now });
+    
+    // 计算速度 → 笔锋粗细
+    const dt = now - lastPt.time;
+    const speed = dist / Math.max(dt, 1) * 1000; // px/s
+    const width = speed > 800 ? 2 : speed > 400 ? 4 : 7; // 快=细，慢=粗
+    
+    inkTrail.push({ x, y, width, alpha: 1 });
+    if (inkTrail.length > CONFIG.INK_TRAIL_LENGTH) {
+      inkTrail.shift();
+    }
+    
+    // 实时碰撞检测（画符路径 vs 鬼）
+    checkStrokeCollisions(x, y, lastPt.x, lastPt.y);
+  }
+}
+
+function endDraw() {
+  if (!isDrawing) return;
+  isDrawing = false;
+  
+  // 分析画符质量
+  if (drawPoints.length >= 5) {
+    const quality = analyzeStroke(drawPoints);
+    if (quality.score >= 0.6) {
+      // 成功画符 - 沿轨迹爆发金光
+      triggerTalismanBurst(quality);
+    }
+  }
+  
+  // 墨迹渐隐
+  setTimeout(() => { inkTrail = []; }, 300);
+  drawPoints = [];
+}
+
+function checkStrokeCollisions(x1, y1, x2, y2) {
+  for (const ghost of ghosts) {
+    if (!ghost.alive || !ghost.visible) continue;
+    
+    // 线段到圆心距离
+    const dist = pointToSegmentDist(ghost.x, ghost.y, x1, y1, x2, y2);
+    
+    if (dist < ghost.radius + CONFIG.KILL_RADIUS) {
+      // 计算画符速度作为质量
+      const speed = drawPoints.length > 1 ?
+        Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) : 5;
+      const quality = Math.min(1, speed / 30 + 0.4);
+      
+      killGhost(ghost, quality);
+      playSound('slash');
+    }
+  }
+}
+
+function analyzeStroke(points) {
+  if (points.length < 3) return { score: 0, type: 'none' };
+  
+  // 计算轨迹特征
+  let totalLength = 0;
+  let totalCurvature = 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i].x - points[i-1].x;
+    const dy = points[i].y - points[i-1].y;
+    totalLength += Math.sqrt(dx * dx + dy * dy);
+    minX = Math.min(minX, points[i].x);
+    maxX = Math.max(maxX, points[i].x);
+    minY = Math.min(minY, points[i].y);
+    maxY = Math.max(maxY, points[i].y);
+    
+    if (i >= 2) {
+      const dx1 = points[i-1].x - points[i-2].x;
+      const dy1 = points[i-1].y - points[i-2].y;
+      const cross = dx1 * dy - dy1 * dx;
+      totalCurvature += Math.abs(cross);
+    }
+  }
+  
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const aspectRatio = width / Math.max(height, 1);
+  const avgCurvature = totalCurvature / points.length;
+  
+  // 判断符咒类型
+  let type = 'slash';
+  let score = 0.6;
+  
+  if (totalLength > 200 && avgCurvature < 5) {
+    type = 'slash'; score = 0.7; // 直线斩
+  }
+  if (totalLength > 150 && avgCurvature > 20) {
+    type = 'circle'; score = 0.8; // 圆形封
+  }
+  if (points.length > 20 && totalLength > 300) {
+    type = 'complex'; score = 0.9; // 复杂符咒
+  }
+  
+  // 速度加成
+  const totalTime = points[points.length-1].time - points[0].time;
+  const avgSpeed = totalLength / Math.max(totalTime, 1) * 1000;
+  if (avgSpeed > 500) score = Math.min(1, score + 0.1);
+  
+  return { score, type, length: totalLength, speed: avgSpeed };
+}
+
+function triggerTalismanBurst(quality) {
+  // 沿轨迹生成金色粒子
+  const step = Math.max(1, Math.floor(drawPoints.length / 15));
+  for (let i = 0; i < drawPoints.length; i += step) {
+    const pt = drawPoints[i];
+    for (let j = 0; j < 3; j++) {
+      particles.push(new Particle(pt.x, pt.y, '#ffd700', 'gold'));
+    }
+  }
+  
+  // 大范围斩杀（高评分时）
+  if (quality.score >= 0.8) {
+    const range = quality.score >= 0.9 ? 120 : 80;
+    for (const ghost of ghosts) {
+      if (!ghost.alive) continue;
+      for (const pt of drawPoints) {
+        const dist = Math.sqrt((ghost.x - pt.x) ** 2 + (ghost.y - pt.y) ** 2);
+        if (dist < range) {
+          killGhost(ghost, quality.score);
+          break;
+        }
+      }
+    }
+    screenShake.intensity = 8;
+    playSound('perfect');
+    
+    floatingTexts.push(new FloatingText(
+      window.innerWidth / 2, window.innerHeight * 0.4,
+      quality.score >= 0.9 ? '完美符咒！' : '优秀！',
+      quality.score >= 0.9 ? '#ffd700' : '#cc88ff', 28
+    ));
+  }
+}
+
+function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * dx, projY = y1 + t * dy;
+  return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+}
+
+// ============================================================
+// 渲染
+// ============================================================
+
+function drawBackground() {
+  const w = window.innerWidth, h = window.innerHeight;
+  
+  // 深蓝夜空渐变
+  const grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h) * 0.7);
+  grad.addColorStop(0, '#1a1a3a');
+  grad.addColorStop(1, '#0a0a1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  
+  // 灯笼
+  for (const l of bgLanterns) {
+    l.phase += 0.01;
+    const glow = 0.3 + Math.sin(l.phase) * 0.15;
+    ctx.save();
+    ctx.globalAlpha = glow;
+    ctx.fillStyle = '#ff6633';
+    ctx.shadowColor = '#ff6633';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.ellipse(l.x, l.y + Math.sin(l.phase * l.speed) * 3, l.size * 0.6, l.size, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 灯笼骨架
+    ctx.strokeStyle = '#cc3300';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  // 地面雾气
+  ctx.save();
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = '#4488aa';
+  for (let i = 0; i < 5; i++) {
+    const fogX = (gameTime * 0.02 + i * 200) % (w + 200) - 100;
+    ctx.beginPath();
+    ctx.ellipse(fogX, h - 30, 120, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawZhongkui() {
+  const { x, y } = zhongkui;
+  zhongkui.pulsePhase += 0.03;
+  const pulse = 1 + Math.sin(zhongkui.pulsePhase) * 0.03;
+  
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(pulse, pulse);
+  
+  // 光环
+  ctx.globalAlpha = 0.2;
+  ctx.fillStyle = '#ffd700';
+  ctx.shadowColor = '#ffd700';
+  ctx.shadowBlur = 30;
+  ctx.beginPath();
+  ctx.arc(0, 0, zhongkui.radius + 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+  
+  // 身体（红袍）
+  ctx.fillStyle = '#cc2222';
+  ctx.beginPath();
+  ctx.arc(0, 5, 22, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 头
+  ctx.fillStyle = '#ffcc99';
+  ctx.beginPath();
+  ctx.arc(0, -12, 14, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 官帽
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-16, -28, 32, 8);
+  ctx.fillRect(-4, -36, 8, 10);
+  
+  // 胡子
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-5, -4); ctx.lineTo(-8, 6);
+  ctx.moveTo(5, -4); ctx.lineTo(8, 6);
+  ctx.moveTo(0, -2); ctx.lineTo(0, 8);
+  ctx.stroke();
+  
+  // 眼睛（怒目）
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-5, -14, 4, 0, Math.PI * 2);
+  ctx.arc(5, -14, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(-5, -14, 2, 0, Math.PI * 2);
+  ctx.arc(5, -14, 2, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 眉毛（怒）
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-9, -20); ctx.lineTo(-2, -18);
+  ctx.moveTo(9, -20); ctx.lineTo(2, -18);
+  ctx.stroke();
+  
+  ctx.restore();
+}
+
+function drawInkTrail() {
+  if (inkTrail.length < 2) return;
+  
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  for (let i = 1; i < inkTrail.length; i++) {
+    const pt = inkTrail[i];
+    const prev = inkTrail[i - 1];
+    const alpha = (i / inkTrail.length) * 0.8;
+    
+    // 墨迹主体
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = isDrawing ? '#1a1a2e' : '#333355';
+    ctx.lineWidth = pt.width;
+    ctx.beginPath();
+    ctx.moveTo(prev.x, prev.y);
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    
+    // 金色边缘（画符时）
+    if (isDrawing) {
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = pt.width + 2;
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(prev.x, prev.y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+  
+  // 笔尖发光点
+  if (isDrawing && inkTrail.length > 0) {
+    const tip = inkTrail[inkTrail.length - 1];
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  ctx.restore();
+}
+
+function render() {
+  const w = window.innerWidth, h = window.innerHeight;
+  
+  ctx.save();
+  
+  // 屏幕震动
+  if (screenShake.intensity > 0.5) {
+    screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+    screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+    screenShake.intensity *= CONFIG.SCREEN_SHAKE_DECAY;
+    ctx.translate(screenShake.x, screenShake.y);
+  }
+  
+  // 清屏
+  ctx.clearRect(-10, -10, w + 20, h + 20);
+  
+  // 背景
+  drawBackground();
+  
+  // 鬼怪
+  for (const ghost of ghosts) {
+    ghost.draw(ctx);
+  }
+  
+  // 钟馗
+  drawZhongkui();
+  
+  // 墨迹拖尾
+  drawInkTrail();
+  
+  // 粒子
+  for (const p of particles) {
+    p.draw(ctx);
+  }
+  
+  // 浮动文字
+  for (const ft of floatingTexts) {
+    ft.draw(ctx);
+  }
+  
+  ctx.restore();
+}
+
+// ============================================================
+// 游戏主循环
+// ============================================================
+
+let lastTime = 0;
+function gameLoop(timestamp) {
+  const dt = Math.min(timestamp - lastTime, 50); // cap delta
+  lastTime = timestamp;
+  gameTime += dt;
+  
+  if (gameState === 'playing') {
+    // 生成鬼
+    if (waveGhostsSpawned < waveGhostsRemaining) {
+      const interval = Math.max(400, CONFIG.GHOST_SPAWN_INTERVAL - wave * 80);
+      if (gameTime - lastSpawnTime > interval) {
+        spawnGhost();
+        lastSpawnTime = gameTime;
+      }
+    }
+    
+    // 更新鬼
+    ghosts = ghosts.filter(g => g.update(dt));
+    
+    // 更新粒子
+    particles = particles.filter(p => p.update(dt));
+    
+    // 更新浮动文字
+    floatingTexts = floatingTexts.filter(ft => ft.update(dt));
+    
+    // 墨迹渐隐
+    if (!isDrawing && inkTrail.length > 0) {
+      inkTrail = inkTrail.filter(pt => {
+        pt.alpha -= 0.05;
+        return pt.alpha > 0;
+      });
+    }
+    
+    // 检查波次完成
+    checkWaveComplete();
+  }
+  
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// UI更新
+// ============================================================
+
+function updateUI() {
+  document.getElementById('score-display').textContent = `分数: ${score}`;
+  document.getElementById('wave-display').textContent = `第 ${wave} 波`;
+  document.getElementById('lives-display').textContent = '❤'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, CONFIG.MAX_LIVES - lives));
+}
+
+// ============================================================
+// 游戏流程控制
+// ============================================================
+
+function startGame() {
+  gameState = 'playing';
+  score = 0; lives = CONFIG.MAX_LIVES; wave = 1;
+  ghostsKilled = 0; maxCombo = 0; combo = 0;
+  ghosts = []; particles = []; floatingTexts = []; inkTrail = [];
+  gameTime = 0; lastSpawnTime = 0;
+  screenShake = { x: 0, y: 0, intensity: 0 };
+  
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('gameover-screen').style.display = 'none';
+  
+  updateUI();
+  startWave();
+}
+
+function gameOver() {
+  gameState = 'gameover';
+  document.getElementById('gameover-screen').style.display = 'flex';
+  document.getElementById('final-score').textContent = `最终分数: ${score}`;
+  document.getElementById('final-stats').textContent = 
+    `击杀: ${ghostsKilled} | 最高连击: ${maxCombo} | 存活波次: ${wave}`;
+}
+
+// ============================================================
+// 输入事件
+// ============================================================
+
+function getPos(e) {
+  if (e.touches) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (gameState !== 'playing') return;
+  const pos = getPos(e);
+  startDraw(pos.x, pos.y);
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (gameState !== 'playing') return;
+  const pos = getPos(e);
+  moveDraw(pos.x, pos.y);
+});
+canvas.addEventListener('mouseup', () => endDraw());
+canvas.addEventListener('mouseleave', () => endDraw());
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (gameState !== 'playing') return;
+  const pos = getPos(e);
+  startDraw(pos.x, pos.y);
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (gameState !== 'playing') return;
+  const pos = getPos(e);
+  moveDraw(pos.x, pos.y);
+}, { passive: false });
+canvas.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  endDraw();
+}, { passive: false });
+
+// 按钮
+document.getElementById('start-btn').addEventListener('click', () => {
+  initAudio();
+  startGame();
+});
+document.getElementById('restart-btn').addEventListener('click', () => {
+  startGame();
+});
+
+// ============================================================
+// 启动
+// ============================================================
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

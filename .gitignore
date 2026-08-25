@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build / temp
+dist/
+build/
+*.log
+/tmp/
+
+# WeChat mini-game local
+wechat-minigame/node_modules/
+wechat-minigame/.idea/

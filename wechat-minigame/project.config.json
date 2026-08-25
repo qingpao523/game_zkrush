@@ -1,0 +1,42 @@
+{
+  "description": "钟馗之一笔镇妖 - 微信小游戏",
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "node_modules" },
+      { "type": "file", "value": "*.md" }
+    ]
+  },
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "preloadBackgroundData": false,
+    "minified": true,
+    "newFeature": true,
+    "coverView": true,
+    "nodeModules": false,
+    "autoAudits": false,
+    "showShadowRootInWxmlPanel": true,
+    "scopeDataCheck": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "game",
+  "libVersion": "3.3.4",
+  "appid": "wx_YOUR_APPID_HERE",
+  "projectname": "zhongkui-talisman",
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  }
+}
