@@ -88,6 +88,11 @@ canvas { display: block; width: 100%; height: 100%; }
   font-size: 11px; color: rgba(255,255,255,0.25);
   background: rgba(255,255,255,0.02);
 }
+.tut-art {
+  width: 100%; max-width: 440px; display: block; margin: 10px auto 16px;
+  border-radius: 10px; box-shadow: 0 0 28px rgba(0,0,0,0.65), 0 0 12px rgba(255,215,0,0.12);
+  border: 1px solid rgba(255,215,0,0.15);
+}
 
 /* ====== HUD ====== */
 #hud {
@@ -116,6 +121,7 @@ canvas { display: block; width: 100%; height: 100%; }
   box-shadow: 0 0 12px rgba(255,215,0,0.3); transform: scale(1.1);
 }
 #talisman-bar .t-item .t-glyph { font-size: 15px; color: #ffd700; }
+#talisman-bar .t-item .t-icon { width: 24px; height: 24px; object-fit: contain; filter: drop-shadow(0 0 3px rgba(255,215,0,0.4)); }
 #talisman-bar .t-item .t-name { font-size: 7px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 
 /* 品级闪现 */
@@ -193,6 +199,19 @@ canvas { display: block; width: 100%; height: 100%; }
 .ws-btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: #555; color: #888; background: #222; }
 .ws-btn.fork { border-color: #aa66ff; color: #cc99ff; background: linear-gradient(160deg,#3a1a5a,#25103a); }
 
+/* ---- 皮肤预览 ---- */
+#ws-skin-preview {
+  display: flex; flex-direction: column; align-items: center;
+  margin: 14px 16px 6px; padding: 16px 12px 14px;
+  background: radial-gradient(circle at 50% 35%, rgba(40,32,20,0.6), rgba(15,12,22,0.7));
+  border: 1px solid rgba(255,215,0,0.25); border-radius: 14px;
+}
+#ws-preview { width: 168px; height: 168px; display: block; border-radius: 12px; background: #05040a; }
+.wp-name { margin-top: 10px; font-size: 19px; letter-spacing: 3px; color: #ffd700; text-shadow: 0 0 14px rgba(255,215,0,0.4); }
+.wp-desc { margin-top: 5px; font-size: 12px; color: #aaa; line-height: 1.5; text-align: center; max-width: 280px; }
+.wp-cost { margin-top: 7px; font-size: 12px; color: #ffcc66; letter-spacing: 1px; }
+.ws-item .glyph { cursor: pointer; }
+
 /* ===== 进化分叉弹窗 ===== */
 #fork-modal {
   position: fixed; inset: 0; z-index: 95; display: none;
@@ -220,7 +239,9 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 #title-menu.show { display: flex; }
 .tm-name { font-size: 40px; color: #ffd700; letter-spacing: 6px; text-shadow: 0 0 30px rgba(255,215,0,0.6); margin-bottom: 10px; }
-.tm-wallet { font-size: 14px; color: #ccc; margin-bottom: 36px; }
+.tm-logo { width: 300px; max-width: 74vw; margin-bottom: 40px; position: relative; z-index: 2; filter: drop-shadow(0 0 24px rgba(255,215,0,0.35)); }
+.tm-tagline { font-size: 15px; color: rgba(255,215,0,0.75); letter-spacing: 4px; margin-bottom: 18px; text-shadow: 0 0 12px rgba(255,215,0,0.3); }
+.tm-wallet { font-size: 14px; color: #ccc; margin-bottom: 34px; }
 .tm-wallet b { color: #ffd700; }
 .tm-btn {
   width: 220px; margin: 8px 0; padding: 14px; font-size: 18px; cursor: pointer;
@@ -251,16 +272,16 @@ canvas { display: block; width: 100%; height: 100%; }
 <div id="wave-announce" style="position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);z-index:60;pointer-events:none;opacity:0;transition:opacity 0.3s;font-family:'KaiTi','STKaiti',serif;font-size:32px;font-weight:bold;text-align:center;text-shadow:0 0 30px currentColor,0 0 60px currentColor;"></div>
 
 <div id="talisman-bar">
-  <div class="t-item" data-t="横斩符"><span class="t-glyph">一</span><span class="t-name">横斩</span></div>
-  <div class="t-item" data-t="竖劈符"><span class="t-glyph">丨</span><span class="t-name">竖劈</span></div>
-  <div class="t-item" data-t="斜斩符"><span class="t-glyph">╲</span><span class="t-name">斜斩</span></div>
-  <div class="t-item" data-t="圆封符"><span class="t-glyph">○</span><span class="t-name">圆封</span></div>
-  <div class="t-item" data-t="三角镇"><span class="t-glyph">△</span><span class="t-name">三角</span></div>
-  <div class="t-item" data-t="雷符"><span class="t-glyph">⚡</span><span class="t-name">雷符</span></div>
-  <div class="t-item" data-t="火符"><span class="t-glyph">火</span><span class="t-name">火符</span></div>
-  <div class="t-item" data-t="冰符"><span class="t-glyph">冰</span><span class="t-name">冰符</span></div>
-  <div class="t-item" data-t="螺旋符"><span class="t-glyph">旋</span><span class="t-name">螺旋</span></div>
-  <div class="t-item" data-t="敕令"><span class="t-glyph">敕</span><span class="t-name">敕令</span></div>
+  <div class="t-item" data-t="横斩符"><img class="t-icon" src="assets/images/ui/talisman-icon-heng.png" alt="一"><span class="t-name">横斩</span></div>
+  <div class="t-item" data-t="竖劈符"><img class="t-icon" src="assets/images/ui/talisman-icon-shu.png" alt="丨"><span class="t-name">竖劈</span></div>
+  <div class="t-item" data-t="斜斩符"><img class="t-icon" src="assets/images/ui/talisman-icon-xie.png" alt="╲"><span class="t-name">斜斩</span></div>
+  <div class="t-item" data-t="圆封符"><img class="t-icon" src="assets/images/ui/talisman-icon-yuan.png" alt="○"><span class="t-name">圆封</span></div>
+  <div class="t-item" data-t="三角镇"><img class="t-icon" src="assets/images/ui/talisman-icon-san.png" alt="△"><span class="t-name">三角</span></div>
+  <div class="t-item" data-t="雷符"><img class="t-icon" src="assets/images/ui/talisman-icon-lei.png" alt="⚡"><span class="t-name">雷符</span></div>
+  <div class="t-item" data-t="火符"><img class="t-icon" src="assets/images/ui/talisman-icon-huo.png" alt="火"><span class="t-name">火符</span></div>
+  <div class="t-item" data-t="冰符"><img class="t-icon" src="assets/images/ui/talisman-icon-bing.png" alt="冰"><span class="t-name">冰符</span></div>
+  <div class="t-item" data-t="螺旋符"><img class="t-icon" src="assets/images/ui/talisman-icon-xuan.png" alt="旋"><span class="t-name">螺旋</span></div>
+  <div class="t-item" data-t="敕令"><img class="t-icon" src="assets/images/ui/talisman-icon-chi.png" alt="敕"><span class="t-name">敕令</span></div>
 </div>
 
 <div id="grade-flash"></div>
@@ -288,6 +309,12 @@ canvas { display: block; width: 100%; height: 100%; }
   <div class="ws-section-label">钟馗装备</div>
   <div id="ws-equip"></div>
   <div class="ws-section-label">钟馗法相 · 皮肤</div>
+  <div id="ws-skin-preview">
+    <canvas id="ws-preview" width="200" height="200"></canvas>
+    <div class="wp-name" id="wp-name">素墨钟馗</div>
+    <div class="wp-desc" id="wp-desc"></div>
+    <div class="wp-cost" id="wp-cost"></div>
+  </div>
   <div id="ws-skins"></div>
 </div>
 
@@ -306,7 +333,8 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <!-- 标题菜单（开始/工坊） -->
 <div id="title-menu">
-  <div class="tm-name">钟馗 · 一笔镇妖</div>
+  <img class="tm-logo" src="assets/images/ui/logo.png" alt="钟馗·一笔镇妖" onerror="this.style.display='none'">
+  <div class="tm-tagline">水 墨 画 符 · 一 笔 镇 鬼</div>
   <div class="tm-wallet">魂币 <b id="tm-coin">0</b> · 墨精 <b id="tm-ink">0</b></div>
   <button class="tm-btn primary" onclick="enterTutorial()">⚔️ 开始镇妖</button>
   <button class="tm-btn" onclick="openWorkshop()">📜 升级工坊</button>
@@ -320,7 +348,7 @@ canvas { display: block; width: 100%; height: 100%; }
   <!-- 第一幕：死 -->
   <div class="step active" data-step="0">
     <div class="step-title">序 · 死</div>
-    <div class="art-placeholder">【美术占位】钟馗撞阶图：白衣书生俯身撞向白玉台阶，血溅，手中握笔。水墨风，暗色调。见 ART_REQUIREMENTS.md #TUT-01</div>
+    <img class="tut-art" src="assets/images/tutorial/tut-01-suicide.png" alt="钟馗撞阶">
     <div class="narr">
       大唐。终南山下。<br>
       你叫钟馗。<br><br>
@@ -339,7 +367,7 @@ canvas { display: block; width: 100%; height: 100%; }
   <!-- 第二幕：醒 -->
   <div class="step" data-step="1">
     <div class="step-title">壹 · 醒</div>
-    <div class="art-placeholder">【美术占位】酆都城门裂开：巨大石门从中间崩裂，绿光从缝隙涌出，万鬼剪影。见 ART_REQUIREMENTS.md #TUT-02</div>
+    <img class="tut-art" src="assets/images/tutorial/tut-02-gate.png" alt="酆都城门裂开">
     <div class="narr">
       三百年。<br>
       你在酆都最深处，睡了三百年。<br><br>
@@ -371,7 +399,7 @@ canvas { display: block; width: 100%; height: 100%; }
         &nbsp;&nbsp;激活后以笔画中心为圆心，范围杀伤
       </span>
     </div>
-    <div class="art-placeholder">【美术占位】判官笔特写：一支古笔，笔尖金光流转，笔杆刻有符文。见 ART_REQUIREMENTS.md #TUT-03</div>
+    <img class="tut-art" src="assets/images/tutorial/tut-03-brush.png" alt="判官笔特写">
     <button class="btn-next" onclick="nextStep()">六道封禁</button>
   </div>
 
@@ -454,6 +482,38 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
+
+// ==================== 美术资源加载 ====================
+// 所有贴图带 fallback：图未加载/缺失时自动退回 Canvas 程序化绘制，游戏不受影响。
+const ASSET_SRC={
+  bg_fengdu:'assets/images/bg/scene-fengdu.png',
+  bg_naihe:'assets/images/bg/scene-naihe.png',
+  bg_judge:'assets/images/bg/scene-judge.png',
+  bg_hometown:'assets/images/bg/scene-hometown.png',
+  bg_abyss:'assets/images/bg/scene-abyss.png',
+  char_idle:'assets/images/char/zhongkui-idle.png',
+  char_draw:'assets/images/char/zhongkui-draw.png',
+  gh_normal:'assets/images/ghost/ghost-normal.png',
+  gh_fast:'assets/images/ghost/ghost-fast.png',
+  gh_shield:'assets/images/ghost/ghost-shield.png',
+  gh_round:'assets/images/ghost/ghost-round.png',
+  gh_fire:'assets/images/ghost/ghost-fire.png',
+  gh_zigzag:'assets/images/ghost/ghost-zigzag.png',
+  gh_split:'assets/images/ghost/ghost-split.png',
+  gh_hidden:'assets/images/ghost/ghost-hidden.png',
+  gh_flyer:'assets/images/ghost/ghost-flyer.png',
+};
+const ASSETS={};
+for(const k in ASSET_SRC){ const im=new Image(); im.src=ASSET_SRC[k]; ASSETS[k]=im; }
+// 返回已加载完成的图，否则 null（触发 fallback）
+function img(k){ const im=ASSETS[k]; return (im && im.complete && im.naturalWidth>0)?im:null; }
+// 等比覆盖整个画布（object-fit: cover），居中
+function drawCover(im){
+  const iw=im.naturalWidth, ih=im.naturalHeight;
+  const s=Math.max(W/iw, H/ih);
+  const dw=iw*s, dh=ih*s;
+  ctx.drawImage(im, (W-dw)/2, (H-dh)/2, dw, dh);
+}
 
 // ==================== 教程控制 ====================
 let tutorialStep = 0;
@@ -984,14 +1044,16 @@ const TALISMAN_DEFS={
 };
 const TALISMAN_ORDER=['横斩符','竖劈符','斜斩符','圆封符','三角镇','雷符','火符','冰符','螺旋符','敕令'];
 // 升级成本：L2魂币，L3墨精(分叉)，L4/L5墨精
-const UPGRADE_COST={2:{coin:50},3:{ink:10},4:{ink:15},5:{ink:25}};
+// 升级成本：前期小、后期重，L4/L5 同时消耗魂币+墨精（双货币都不贬值）
+// 全量满级约需 100 小时（墨精为技术门槛、魂币为时长门槛）
+const UPGRADE_COST={2:{coin:300},3:{ink:60},4:{coin:2000,ink:150},5:{coin:8000,ink:400}};
 
-// 装备定义：4槽位×3阶
+// 装备定义：4槽位×3阶（阶梯式涨价：600 → 3500 → 15000 魂币）
 const EQUIP_DEFS={
-  brush:{name:'判官笔',stat:'蓄力速度',tiers:['铁笔','银笔','金笔'],bonus:[0.10,0.20,0.35],cost:[100,300,800]},
-  robe:{name:'钟馗袍',stat:'生命',tiers:['布袍','铁甲袍','龙鳞袍'],bonus:[0,1,2],cost:[100,300,800]},
-  crown:{name:'乌纱冠',stat:'魂币加成',tiers:['无冠','银冠','金冠'],bonus:[0.10,0.20,0.35],cost:[100,300,800]},
-  charm:{name:'腰间佩',stat:'开局buff',tiers:['玉佩','灵佩','魂佩'],bonus:[1,1,2],cost:[100,300,800]},
+  brush:{name:'判官笔',stat:'蓄力速度',tiers:['铁笔','银笔','金笔'],bonus:[0.10,0.20,0.35],cost:[600,3500,15000]},
+  robe:{name:'钟馗袍',stat:'生命',tiers:['布袍','铁甲袍','龙鳞袍'],bonus:[0,1,2],cost:[600,3500,15000]},
+  crown:{name:'乌纱冠',stat:'魂币加成',tiers:['无冠','银冠','金冠'],bonus:[0.10,0.20,0.35],cost:[600,3500,15000]},
+  charm:{name:'腰间佩',stat:'开局buff',tiers:['玉佩','灵佩','魂佩'],bonus:[1,1,2],cost:[600,3500,15000]},
 };
 
 // 局内buff池
@@ -1032,38 +1094,26 @@ loadMeta();
 
 // ==================== 皮肤系统 ====================
 // trail=墨迹主色 glow=蓄力/笔尖光 glyph=激活符字色
+// 法相需以魂币+墨精兑换（量极大，约20~100局/款），default免费、share分享解锁
 const SKINS={
-  default:{name:'素墨钟馗',desc:'一袭白衣，素笔朱砂。',unlock:{type:'free'},trail:'#1a1a2e',glow:'#ffd700',glyph:'#ffd700'},
-  judge:{name:'判官朱砂',desc:'朱笔一勾，生死簿上除名。',unlock:{type:'score',val:800},trail:'#3a0d0d',glow:'#ff4444',glyph:'#ff5544'},
-  flame:{name:'业火钟馗',desc:'斩鬼百只，业火缠身。',unlock:{type:'kills',val:100},trail:'#2a1206',glow:'#ff7722',glyph:'#ff8833'},
-  ice:{name:'玄冰钟馗',desc:'霜封二百鬼，寒气彻骨。',unlock:{type:'kills',val:200},trail:'#0d1f2a',glow:'#66ccff',glyph:'#88ddff'},
-  gold:{name:'金身钟馗',desc:'金身不坏，万邪不侵。',unlock:{type:'score',val:2500},trail:'#2a2206',glow:'#ffdd33',glyph:'#ffee66'},
-  shadow:{name:'幽冥钟馗',desc:'身入幽冥，与鬼同途。',unlock:{type:'kills',val:600},trail:'#1a0d2a',glow:'#cc66ff',glyph:'#dd88ff'},
-  share:{name:'传世钟馗',desc:'声名传世，万人共书。',unlock:{type:'share'},trail:'#0d2a1a',glow:'#44dd88',glyph:'#66ffaa'},
+  default:{name:'素墨钟馗',desc:'一袭白衣，素笔朱砂。',free:true,trail:'#1a1a2e',glow:'#ffd700',glyph:'#ffd700'},
+  judge:{name:'判官朱砂',desc:'朱笔一勾，生死簿上除名。',cost:{coin:8000,ink:100},trail:'#3a0d0d',glow:'#ff4444',glyph:'#ff5544'},
+  flame:{name:'业火钟馗',desc:'斩鬼百只，业火缠身。',cost:{coin:10000,ink:250},trail:'#2a1206',glow:'#ff7722',glyph:'#ff8833'},
+  ice:{name:'玄冰钟馗',desc:'霜封二百鬼，寒气彻骨。',cost:{coin:14000,ink:400},trail:'#0d1f2a',glow:'#66ccff',glyph:'#88ddff'},
+  gold:{name:'金身钟馗',desc:'金身不坏，万邪不侵。',cost:{coin:25000,ink:700},trail:'#2a2206',glow:'#ffdd33',glyph:'#ffee66'},
+  shadow:{name:'幽冥钟馗',desc:'身入幽冥，与鬼同途。',cost:{coin:20000,ink:1000},trail:'#1a0d2a',glow:'#cc66ff',glyph:'#dd88ff'},
+  share:{name:'传世钟馗',desc:'声名传世，万人共书。',share:true,trail:'#0d2a1a',glow:'#44dd88',glyph:'#66ffaa'},
 };
 function currentSkin(){ return SKINS[meta.skins.selected]||SKINS.default; }
 function isSkinUnlocked(id){ return meta.skins.unlocked.includes(id); }
 function skinUnlockHint(sk){
-  const u=sk.unlock;
-  if(u.type==='free')return '初始拥有';
-  if(u.type==='score')return `单局得分 ≥ ${u.val} 解锁`;
-  if(u.type==='kills')return `累计斩鬼 ≥ ${u.val} 解锁`;
-  if(u.type==='share')return '分享游戏后解锁';
+  if(sk.free)return '初始拥有';
+  if(sk.share)return '分享游戏后解锁';
+  if(sk.cost)return '兑换需 '+costText(sk.cost);
   return '';
 }
-// 结算时按条件解锁皮肤，返回新解锁列表
-function checkSkinUnlocks(){
-  const newly=[];
-  for(const id in SKINS){
-    if(isSkinUnlocked(id))continue;
-    const u=SKINS[id].unlock;
-    let ok=false;
-    if(u.type==='score')ok=score>=u.val;
-    else if(u.type==='kills')ok=meta.totalKills>=u.val;
-    if(ok){meta.skins.unlocked.push(id);newly.push(id);}
-  }
-  return newly;
-}
+// 皮肤改为工坊代币兑换，结算不再自动解锁（保留空实现以兼容调用点）
+function checkSkinUnlocks(){ return []; }
 // 分享解锁（标题菜单按钮调用）
 function unlockShareSkin(){
   if(!isSkinUnlocked('share')){
@@ -1747,11 +1797,13 @@ function drawBg(){
   const g=ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0,sc.top);g.addColorStop(1,sc.bot);
   ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // 场景背景贴图（缺失则退回剪影装饰）
+  const bg=img('bg_'+sc.id);
+  if(bg){ drawCover(bg); } else { drawSceneDecor(sc); }
   // 中心微光
   const rg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.6);
   rg.addColorStop(0,'rgba(255,215,0,0.04)');rg.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=rg;ctx.fillRect(0,0,W,H);
-  drawSceneDecor(sc);
   drawAmbient();
   // Boss 血红压境
   if(bossState==='fight'||bossState==='enrage'){
@@ -1770,10 +1822,15 @@ function drawCenter(){
   ctx.globalAlpha=0.12;ctx.fillStyle=sk.glow;ctx.shadowColor=sk.glow;ctx.shadowBlur=30;
   ctx.beginPath();ctx.arc(0,0,35,0,6.28);ctx.fill();
   ctx.globalAlpha=1;ctx.shadowBlur=0;
-  ctx.fillStyle='#cc2222';ctx.beginPath();ctx.arc(0,3,18,0,6.28);ctx.fill();
-  ctx.fillStyle='#ffcc99';ctx.beginPath();ctx.arc(0,-10,11,0,6.28);ctx.fill();
-  ctx.fillStyle='#222';ctx.fillRect(-13,-23,26,6);ctx.fillRect(-2,-29,4,8);
-  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(-4,-11,1.5,0,6.28);ctx.arc(4,-11,1.5,0,6.28);ctx.fill();
+  const cim=img(drawing.active?'char_draw':'char_idle');
+  if(cim){
+    const s=82; ctx.drawImage(cim,-s/2,-s/2,s,s);
+  } else {
+    ctx.fillStyle='#cc2222';ctx.beginPath();ctx.arc(0,3,18,0,6.28);ctx.fill();
+    ctx.fillStyle='#ffcc99';ctx.beginPath();ctx.arc(0,-10,11,0,6.28);ctx.fill();
+    ctx.fillStyle='#222';ctx.fillRect(-13,-23,26,6);ctx.fillRect(-2,-29,4,8);
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(-4,-11,1.5,0,6.28);ctx.arc(4,-11,1.5,0,6.28);ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -1788,6 +1845,11 @@ function drawGhosts(){
     if(g.frozen>0){ctx.globalAlpha=baseAlpha*0.6;ctx.shadowColor='#88ddff';ctx.shadowBlur=8;}
     if(g.burning>0){ctx.shadowColor='#ff6600';ctx.shadowBlur=6;}
 
+    // 鬼怪贴图（缺失则退回程序化绘制）
+    const gim=img('gh_'+g.type);
+    if(gim){
+      const s=g.r*2.7; ctx.drawImage(gim,-s/2,-s/2,s,s);
+    } else {
     // 飞行鬼：先画翅膀
     if(g.flies){
       ctx.fillStyle='rgba(204,153,221,0.5)';
@@ -1808,6 +1870,7 @@ function drawGhosts(){
 
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-g.r*0.3,-g.r*0.1,g.r*0.2,0,6.28);ctx.arc(g.r*0.3,-g.r*0.1,g.r*0.2,0,6.28);ctx.fill();
     ctx.fillStyle='#111';ctx.beginPath();ctx.arc(-g.r*0.3,-g.r*0.05,g.r*0.09,0,6.28);ctx.arc(g.r*0.3,-g.r*0.05,g.r*0.09,0,6.28);ctx.fill();
+    }
 
     // 弱点图标（隐身鬼淡出时不显示，避免暴露）
     if(!(g.cloaks && g.alpha<0.3)){
@@ -2087,6 +2150,7 @@ function enterTutorial(){
 function openWorkshop(){
   document.getElementById('title-menu').classList.remove('show');
   refreshWallets();
+  previewSkinId=meta.skins.selected;
   renderWorkshop();
   document.getElementById('workshop').classList.add('show');
 }
@@ -2103,15 +2167,14 @@ function talismanNextCost(name){
 }
 function costText(cost){
   if(!cost)return '';
-  if(cost.coin)return `${cost.coin}魂币`;
-  if(cost.ink)return `${cost.ink}墨精`;
-  return '';
+  const p=[];
+  if(cost.coin)p.push(`${cost.coin}魂币`);
+  if(cost.ink)p.push(`${cost.ink}墨精`);
+  return p.join(' + ');
 }
 function canAfford(cost){
   if(!cost)return false;
-  if(cost.coin)return meta.coin>=cost.coin;
-  if(cost.ink)return meta.ink>=cost.ink;
-  return false;
+  return (!cost.coin||meta.coin>=cost.coin) && (!cost.ink||meta.ink>=cost.ink);
 }
 
 function renderWorkshop(){
@@ -2180,18 +2243,23 @@ function renderWorkshop(){
       btnHtml=`<button class="ws-btn" disabled>使用中</button>`;
     } else if(unlocked){
       btnHtml=`<button class="ws-btn" onclick="selectSkin('${id}')">更换</button>`;
-    } else if(sk.unlock.type==='share'){
+    } else if(sk.share){
       btnHtml=`<button class="ws-btn" onclick="unlockShareSkin()">分享解锁</button>`;
+    } else if(sk.cost){
+      const aff=canAfford(sk.cost);
+      btnHtml=`<button class="ws-btn" ${aff?'':'disabled'} onclick="buySkin('${id}')">兑换 ${costText(sk.cost)}</button>`;
     } else {
       btnHtml=`<button class="ws-btn" disabled>未解锁</button>`;
     }
     const item=document.createElement('div');item.className='ws-item'+(selected?' selected':'');
-    item.innerHTML=`<div class="glyph" style="color:${sk.glow};text-shadow:0 0 8px ${sk.glow}">馗</div>
+    item.innerHTML=`<div class="glyph" style="color:${sk.glow};text-shadow:0 0 8px ${sk.glow}" onclick="setPreview('${id}')" title="点击预览">馗</div>
       <div class="info"><div class="nm">${sk.name}${selected?' ✓':''}</div>
       <div class="sub">${unlocked?sk.desc:skinUnlockHint(sk)}</div></div>
       ${btnHtml}`;
     sw.appendChild(item);
   });
+    // 渲染当前预览
+    drawSkinPreview(previewSkinId);
 }
 
 function selectSkin(id){
@@ -2201,6 +2269,57 @@ function selectSkin(id){
   renderWorkshop();
   showToast(`已更换法相：<b style="color:${SKINS[id].glow}">${SKINS[id].name}</b>`, 2500);
 }
+
+  // ---- 皮肤预览 ----
+  let previewSkinId='default';
+  function setPreview(id){ previewSkinId=id; drawSkinPreview(id); }
+  function drawSkinPreview(id){
+    const cv=document.getElementById('ws-preview'); if(!cv)return;
+    const sk=SKINS[id]||SKINS.default;
+    const g=cv.getContext('2d'); const S=cv.width;
+    g.clearRect(0,0,S,S);
+    const bg=g.createRadialGradient(S/2,S*0.42,10,S/2,S/2,S*0.75);
+    bg.addColorStop(0,'#17131f'); bg.addColorStop(1,'#05040a');
+    g.fillStyle=bg; g.fillRect(0,0,S,S);
+    g.save();
+    g.globalAlpha=0.45; g.shadowColor=sk.glow; g.shadowBlur=34; g.fillStyle=sk.glow;
+    g.beginPath(); g.arc(S/2,S*0.44,54,0,6.28); g.fill();
+    g.restore();
+    const cim=img('char_idle');
+    if(cim){ const sz=128; g.drawImage(cim,S/2-sz/2,S*0.44-sz/2,sz,sz); }
+    else { g.fillStyle='#cc2222'; g.beginPath(); g.arc(S/2,S*0.44,28,0,6.28); g.fill(); }
+    g.save();
+    g.font='bold 30px "KaiTi","STKaiti",serif'; g.textAlign='center'; g.textBaseline='middle';
+    g.fillStyle=sk.glyph; g.shadowColor=sk.glyph; g.shadowBlur=14;
+    g.fillText('馗', S/2, S-30);
+    g.restore();
+    g.fillStyle=sk.trail; g.fillRect(S/2-34, S-13, 68, 6);
+    g.strokeStyle=sk.glow; g.lineWidth=1; g.strokeRect(S/2-34, S-13, 68, 6);
+    const nm=document.getElementById('wp-name'); if(nm){ nm.textContent=sk.name; nm.style.color=sk.glow; nm.style.textShadow='0 0 14px '+sk.glow; }
+    const ds=document.getElementById('wp-desc'); if(ds)ds.textContent=sk.desc;
+    const ct=document.getElementById('wp-cost');
+    if(ct){
+      if(isSkinUnlocked(id)) ct.textContent = (meta.skins.selected===id)?'✓ 当前法相':'已拥有 · 可更换';
+      else if(sk.free) ct.textContent='初始拥有';
+      else if(sk.share) ct.textContent='分享游戏后解锁';
+      else ct.textContent='兑换需 '+costText(sk.cost);
+    }
+  }
+
+  function buySkin(id){
+    const sk=SKINS[id];
+    if(!sk||!sk.cost||isSkinUnlocked(id))return;
+    if(!canAfford(sk.cost))return;
+    if(sk.cost.coin)meta.coin-=sk.cost.coin;
+    if(sk.cost.ink)meta.ink-=sk.cost.ink;
+    meta.skins.unlocked.push(id);
+    meta.skins.selected=id;
+    saveMeta();
+    previewSkinId=id;
+    renderWorkshop();
+    showToast('解锁法相：<b style="color:'+sk.glow+'">'+sk.name+'</b>', 3000);
+    if(navigator.vibrate)navigator.vibrate([20,30,20]);
+  }
 
 function upgradeTalisman(name){
   const m=meta.talismans[name];
