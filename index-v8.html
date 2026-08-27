@@ -258,7 +258,7 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <div id="hud">
   <div class="score" id="score-val">0</div>
-  <div class="wave" id="wave-val">第 1 波</div>
+  <div class="wave" id="wave-val">第 1 关</div>
   <div class="lives" id="lives-val">❤️❤️❤️</div>
 </div>
 
@@ -446,9 +446,9 @@ canvas { display: block; width: 100%; height: 100%; }
       <span style="color:#ccc">白</span><br><br>
       金色触发<span class="em">慢动作</span>。超爽。<br>
       连续杀鬼触发<span class="red">连斩</span>。更爽。<br><br>
-      八波鬼潮之后——<br>
-      <span class="red big">百鬼王</span>会来。<br>
-      它头顶的「⚡」，是它唯一的弱点。<br><br>
+      每五关，便有一尊<br>
+      <span class="red big">鬼王</span>拦路。<br>
+      它头顶的「⚡」，是它唯一的弱点。镇了它，关数无尽。<br><br>
       <hr>
       <span class="dim">
         三百年前，他们夺了你的状元。<br>
@@ -540,14 +540,14 @@ function startGame() {
   boss=null;bossState='none';bossSummonT=0;bossChargeT=0;
   currentScene=0;ambientP=[];sceneFade=1;lastSceneName=SCENES[0].name;
   runBuffs={dmg:1,charge:1,range:1,comboWindow:2500,lifesteal:false,goldBonus:0,activateCount:0,doubleEvery:false};
-  runEarn={coin:0,ink:0};runBuffsChosen=[];waveLifestealUsed=false;runBanked=false;
+  runEarn={coin:0,ink:0};runBuffsChosen=[];waveLifestealUsed=false;runBanked=false;runStats={kills:0,maxCombo:0,goldKills:0,bossKills:0,talismanUses:0};newRecord=false;
   applyEquipAtStart();
   state = 'playing';
   waveDelay = 2000;
   guideMode = true;
   guideKillCount = 0;
   document.getElementById('score-val').textContent='0';
-  document.getElementById('wave-val').textContent='第 1 波';
+  document.getElementById('wave-val').textContent='第 1 关';
   document.getElementById('boss-hp-bar').style.display = 'none';
   showToast('它来了。<br>画一横 <b style="color:#ffd700">「一」</b>，斩了它。', 4000);
 }
@@ -946,7 +946,7 @@ const SCENES=[
 ];
 let currentScene=0, sceneFade=0, lastSceneName='';
 let ambientP=[]; // 环境粒子
-function sceneForWave(w){ if(w>=8)return 4; return Math.min(3, Math.floor(w/2)); }
+function sceneForWave(w){ return Math.floor(w/2)%5; }
 function spawnAmbient(){
   const sc=SCENES[currentScene];
   const t=sc.ambient;
@@ -1130,6 +1130,8 @@ let runBuffs={dmg:1,charge:1,range:1,comboWindow:2500,lifesteal:false,goldBonus:
 let runEarn={coin:0,ink:0};
 let waveLifestealUsed=false;
 let runBanked=false;
+let runStats={kills:0,maxCombo:0,goldKills:0,bossKills:0,talismanUses:0};
+let newRecord=false;
 
 // 计算符的有效伤害/范围（等级+路径+局内buff）
 function talismanStats(name){
@@ -1192,24 +1194,29 @@ const GHOST_TYPES={
 };
 const WEAKNESS_ICON={'横斩符':'一','竖劈符':'丨','斜斩符':'╲','圆封符':'○','三角镇':'△','雷符':'⚡','火符':'火','冰符':'冰','螺旋符':'旋','敕令':'敕'};
 
-const WAVES=[
-  {count:8, types:['normal','normal','fast'], interval:700},
-  {count:12, types:['normal','fast','fast','zigzag'], interval:600},
-  {count:16, types:['normal','fast','zigzag','round'], interval:520},
-  {count:20, types:['fast','zigzag','round','fire','split'], interval:450},
-  {count:24, types:['fast','zigzag','round','fire','shield','split','hidden'], interval:400},
-  {count:28, types:['fast','zigzag','round','fire','shield','hidden','flyer'], interval:350},
-  {count:32, types:['zigzag','round','fire','shield','fast','flyer','split'], interval:300},
-  {count:36, types:['round','fire','shield','fast','zigzag','hidden','flyer','split'], interval:260},
-  {count:0, types:[], interval:0, boss:true},
-];
+const ALL_GHOST_TYPES=['normal','fast','zigzag','round','fire','split','shield','hidden','flyer'];
+// 无限关卡：程序化生成每一波（每5关一尊鬼王）
+function waveConfig(w){
+  if(w%5===4) return {count:0, types:[], interval:0, boss:true};
+  const count=Math.min(8+w*3, 60);
+  const interval=Math.max(700-w*30, 150);
+  let pool;
+  if(w<=0)pool=['normal','normal','fast'];
+  else if(w===1)pool=['normal','fast','zigzag'];
+  else if(w===2)pool=['normal','fast','zigzag','round'];
+  else if(w===3)pool=['fast','zigzag','round','fire','split'];
+  else if(w===4)pool=['fast','zigzag','round','fire','split','shield'];
+  else if(w<=6)pool=['fast','zigzag','round','fire','split','shield','hidden'];
+  else pool=ALL_GHOST_TYPES;
+  return {count, types:pool, interval, boss:false};
+}
 
 let waveSpawned=0, lastSpawn=0, waveDelay=2000;
 let boss=null, bossState='none'; // none/enter/fight/enrage/dead
 let bossSummonT=0, bossChargeT=0, bossChargeDir=null;
 
 function spawnGhost(forceType, atX, atY, miniScale) {
-  const cfg=WAVES[Math.min(wave,WAVES.length-1)];
+  const cfg=waveConfig(wave);
   const type=forceType||cfg.types[Math.floor(Math.random()*cfg.types.length)];
   const g=GHOST_TYPES[type];
   let x,y;
@@ -1221,8 +1228,8 @@ function spawnGhost(forceType, atX, atY, miniScale) {
     else if(side===2){x=Math.random()*W;y=H+30;}
     else{x=-30;y=Math.random()*H;}
   }
-  const hpScale=(1+wave*0.2)*(miniScale||1);
-  const spdScale=1+wave*0.08;
+  const hpScale=Math.min(1+wave*0.18,7)*(miniScale||1);
+  const spdScale=Math.min(1+wave*0.06,2.5);
   ghosts.push({
     x,y,type,hp:Math.max(1,Math.ceil(g.hp*hpScale)),maxHp:Math.max(1,Math.ceil(g.hp*hpScale)),
     r:g.r*(miniScale?0.6:1),color:g.color,speed:g.speed*spdScale*(miniScale?1.3:1),weakness:g.weakness,
@@ -1235,16 +1242,18 @@ function spawnGhost(forceType, atX, atY, miniScale) {
 
 function spawnBoss(){
   bossState='enter';
+  const bossTier=Math.floor(wave/5)+1;
+  const bossHp=Math.ceil(80*(1+(bossTier-1)*0.6));
   boss={
     x:W/2, y:-80, targetY:H*0.22,
-    hp:80, maxHp:80, r:45, alive:true,
+    hp:bossHp, maxHp:bossHp, r:45, alive:true, tier:bossTier,
     phase:0, frozen:0, burning:0, hitFlash:0,
     weakness:'雷符', enraged:false,
     enterT:0, summonT:0, chargeT:0, chargeDir:null, charging:false, chargeVx:0, chargeVy:0,
   };
   bossSummonT=0; bossChargeT=0;
   updateBossHP();
-  showWaveAnnounce('百鬼王 · 降临', '#cc2222', 2500);
+  showWaveAnnounce(`第 ${bossTier} 尊鬼王 · 降临`, '#cc2222', 2500);
   playBossRoar();
   if(navigator.vibrate)navigator.vibrate([100,50,100,50,200]);
 }
@@ -1338,10 +1347,13 @@ function killBoss(){
   }
   shake.power=20;
   if(navigator.vibrate)navigator.vibrate([100,50,100,50,100,50,300]);
-  score+=500;
+  const tier=(boss&&boss.tier)||1;
+  score+=500*tier;
+  runStats.bossKills++;
+  runEarn.coin+=40*tier; runEarn.ink+=3*tier;
   document.getElementById('score-val').textContent=score;
-  floatTexts.push({x:W/2,y:H*0.3,text:'百鬼王 · 诛!',color:'#ffd700',life:2000,size:32});
-  setTimeout(()=>{state='victory';},1500);
+  floatTexts.push({x:W/2,y:H*0.3,text:`鬼王 · 诛! +${40*tier}魂币`,color:'#ffd700',life:2200,size:30});
+  showWaveAnnounce(`鬼王已镇 · 第 ${tier} 尊`, '#ffd700', 2000);
 }
 
 // ==================== 输入 ====================
@@ -1418,6 +1430,7 @@ function activateTalisman() {
   // 进阶：金品级阈值可被"金手"buff降低
   let grade=result.grade;
   if(runBuffs.goldBonus>0 && grade<4 && result.score>=(0.85-runBuffs.goldBonus)) grade=4;
+  runStats.talismanUses++;
 
   // 进阶：符等级/路径/buff 计算有效数值
   const ts=talismanStats(result.name);
@@ -1533,6 +1546,7 @@ function activateTalisman() {
   if(killed>0){
     const now=Date.now();
     combo=(now-lastKillT<runBuffs.comboWindow)?combo+killed:killed;
+    if(combo>runStats.maxCombo)runStats.maxCombo=combo;
     lastKillT=now;
     const gained=killed*10*(1+combo*0.3)*gradeMul[grade];
     score+=Math.floor(gained);
@@ -1572,7 +1586,7 @@ function showGrade(text,color){
 
 // ==================== 进阶：击杀掉落 ====================
 function onGhostKill(g,grade){
-  meta.totalKills++;
+  meta.totalKills++;runStats.kills++;if(grade>=4)runStats.goldKills++;
   const crownMul=1+equipBonus('crown');
   const coin=Math.ceil(coinForGhost(g.type)*crownMul);
   runEarn.coin+=coin;
@@ -1687,11 +1701,19 @@ function update(dt){
   if(state!=='playing')return;
   if(waveDelay>0){waveDelay-=dt;}
   else{
-    const cfg=WAVES[Math.min(wave,WAVES.length-1)];
+    const cfg=waveConfig(wave);
     if(cfg.boss){
-      // Boss wave
+      // 鬼王关
       if(bossState==='none')spawnBoss();
-      updateBoss(dt);
+      else if(bossState==='dead'){
+        // 鬼王已诛，推进下一关
+        wave++;waveSpawned=0;waveDelay=2000;bossState='none';boss=null;
+        setScene(sceneForWave(wave));
+        document.getElementById('wave-val').textContent=`第 ${wave+1} 关`;
+        showWaveAnnounce(`第 ${wave+1} 关`, '#ffd700', 1500);
+        setTimeout(()=>offerBuffChoice(), 900); // 镇鬼王后奖励三选一
+      }
+      else updateBoss(dt);
     } else if(waveSpawned<cfg.count){
       if(gameTime-lastSpawn>cfg.interval){
         // Batch spawn: 1 early, 2 mid, 3 late
@@ -1706,20 +1728,18 @@ function update(dt){
     }else if(ghosts.filter(g=>g.alive).length===0){
       wave++;waveSpawned=0;waveDelay=1800;
       const clearedWave=wave-1; // 0-indexed wave just cleared
-      if(wave<WAVES.length){
-        const nextCfg=WAVES[wave];
-        setScene(sceneForWave(wave)); // 场景随波次切换
-        if(nextCfg.boss){
-          document.getElementById('wave-val').textContent='最终波';
-          showWaveAnnounce('第八波 · 百鬼王', '#cc2222', 2000);
-        } else {
-          document.getElementById('wave-val').textContent=`第 ${wave+1} 波`;
-          showWaveAnnounce(`第 ${wave+1} 波`, '#ffd700', 1200);
-        }
-        // 进阶快感：清完第2/4/6/8波（0-indexed 1/3/5/7）三选一buff
-        if([1,3,5,7].includes(clearedWave)){
-          setTimeout(()=>offerBuffChoice(), 900);
-        }
+      const nextCfg=waveConfig(wave);
+      setScene(sceneForWave(wave)); // 场景随波次循环切换
+      if(nextCfg.boss){
+        document.getElementById('wave-val').textContent='鬼王关';
+        showWaveAnnounce(`第 ${wave+1} 关 · 鬼王拦路`, '#cc2222', 2000);
+      } else {
+        document.getElementById('wave-val').textContent=`第 ${wave+1} 关`;
+        showWaveAnnounce(`第 ${wave+1} 关`, '#ffd700', 1200);
+      }
+      // 进阶快感：每清2波三选一buff
+      if(clearedWave%2===1){
+        setTimeout(()=>offerBuffChoice(), 900);
       }
     }
   }
@@ -2048,10 +2068,15 @@ function drawFloats(){
 }
 
 function bankRunRewards(){
-  if(state==='victory'){ runEarn.coin+=50; runEarn.ink+=2; }
+  // 存活奖励：走得越远，结算越多（无限模式）
+  runEarn.coin+=wave*3;
+  runEarn.ink+=Math.floor(wave/5);
+  newRecord=score>meta.bestScore;
   meta.coin+=runEarn.coin;
   meta.ink+=runEarn.ink;
   if(score>meta.bestScore)meta.bestScore=score;
+  // 结算庆祝粒子
+  for(let i=0;i<40;i++){const a=Math.random()*6.28,sp=1+Math.random()*4;particles.push({x:W/2,y:H*0.5,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1,r:2+Math.random()*3,color:Math.random()>0.5?'#ffd700':'#aaeeff',life:1200+Math.random()*800,maxLife:2000,gravity:0.02});}
   // 皮肤解锁判定
   const newSkins=checkSkinUnlocks();
   if(newSkins.length){
@@ -2061,36 +2086,77 @@ function bankRunRewards(){
   saveMeta();
 }
 
+function wrapText(text,x,y,maxW,lh){
+  let line='',yy=y;
+  for(const ch of text){const test=line+ch;
+    if(ctx.measureText(test).width>maxW && line){ctx.fillText(line,x,yy);line=ch;yy+=lh;}
+    else line=test;}
+  if(line)ctx.fillText(line,x,yy);return yy;
+}
+function rankByWave(w){
+  if(w>=30)return{t:'万鬼之主',c:'#ff55ff'};
+  if(w>=20)return{t:'镇妖天师',c:'#ffd700'};
+  if(w>=15)return{t:'判官笔主',c:'#ffaa44'};
+  if(w>=10)return{t:'酆都守夜人',c:'#88ddff'};
+  if(w>=6)return{t:'捉鬼游侠',c:'#88ff99'};
+  if(w>=3)return{t:'酆都新秀',c:'#dddddd'};
+  return{t:'执笔童子',c:'#aaaaaa'};
+}
+const RANK_LINES={
+ '万鬼之主':'九幽之下，再无一鬼敢抬头。这笔，已不是笔——是天道。',
+ '镇妖天师':'百鬼夜行，尽伏于你笔底。酆都三千载，只此一人。',
+ '判官笔主':'生死簿上，今夜无名。你笔下的鬼，比判官记得还清楚。',
+ '酆都守夜人':'长夜将尽，鬼潮未歇。守住这一笔，便守住了人间。',
+ '捉鬼游侠':'几道符，几条命。江湖不远，酆都就在你笔下。',
+ '酆都新秀':'第一笔总是难的。难的是——你还敢落第二笔。',
+ '执笔童子':'墨还没研开。再来，笔会替你记住怎么斩。',
+};
 function drawDeath(){
   if(!runBanked){bankRunRewards();runBanked=true;}
-  ctx.fillStyle='rgba(0,0,0,0.75)';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(0,0,0,0.82)';ctx.fillRect(0,0,W,H);
   ctx.textAlign='center';
-  ctx.font='bold 34px "KaiTi",serif';ctx.fillStyle='#cc2222';ctx.fillText('魂归酆都',W/2,H*0.30);
-  ctx.font='22px sans-serif';ctx.fillStyle='#ffd700';ctx.fillText(`得分: ${score}`,W/2,H*0.40);
-  ctx.font='16px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fillText(`止步 · 第 ${Math.min(wave+1,WAVES.length)} 波`,W/2,H*0.47);
-  ctx.font='15px "KaiTi",serif';ctx.fillStyle='#ffd700';ctx.fillText(`收获 魂币+${runEarn.coin}  墨精+${runEarn.ink}`,W/2,H*0.54);
-  ctx.font='14px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillText('笔未干。再来。',W/2,H*0.61);
-  ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,0.3)';ctx.fillText('点击返回 · 升级工坊',W/2,H*0.68);
-  canvas.onclick=()=>{canvas.onclick=null;showTitleMenu();};
-}
-
-function drawVictory(){
-  if(!runBanked){bankRunRewards();runBanked=true;}
-  ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillRect(0,0,W,H);
+  const rk=rankByWave(wave);
+  ctx.font='15px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.fillText('魂 归 酆 都',W/2,H*0.10);
+  let topY=H*0.17;
+  if(newRecord){
+    const p=1+Math.sin(Date.now()*0.006)*0.08;
+    ctx.save();ctx.translate(W/2,topY);ctx.scale(p,p);
+    ctx.font='bold 16px "KaiTi",serif';ctx.fillStyle='#ff4444';ctx.shadowColor='#ff4444';ctx.shadowBlur=20;
+    ctx.fillText('★ 新 纪 录 ★',0,0);ctx.restore();ctx.shadowBlur=0;topY+=H*0.045;
+  }
+  const pulse=1+Math.sin(Date.now()*0.004)*0.04;
+  ctx.save();ctx.translate(W/2,topY+H*0.05);ctx.scale(pulse,pulse);
+  ctx.font='bold 40px "KaiTi",serif';ctx.fillStyle=rk.c;ctx.shadowColor=rk.c;ctx.shadowBlur=30;
+  ctx.fillText(rk.t,0,0);ctx.restore();ctx.shadowBlur=0;
+  ctx.font='15px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.72)';
+  const lineY=wrapText(RANK_LINES[rk.t],W/2,topY+H*0.12,W*0.8,22)+8;
+  const panelY=Math.max(lineY+18,H*0.42);
+  ctx.font='14px "KaiTi",serif';
+  const stats=[['坚守',`${wave+1} 关`],['斩鬼',`${runStats.kills} 只`],['最高连斩',`${runStats.maxCombo}`],['诛鬼王',`${runStats.bossKills} 尊`],['金品级',`${runStats.goldKills} 次`],['落符',`${runStats.talismanUses} 道`]];
+  const colW=W*0.30, rowH=26;
+  for(let i=0;i<stats.length;i++){
+    const col=i%2, row=Math.floor(i/2);
+    const sx=W/2+(col===0?-colW/2:colW/2);
+    const sy=panelY+row*rowH;
+    ctx.fillStyle='rgba(255,255,255,0.5)';ctx.textAlign='right';ctx.fillText(stats[i][0],sx-28,sy);
+    ctx.fillStyle='#ffd700';ctx.textAlign='left';ctx.fillText(stats[i][1],sx-22,sy);
+  }
   ctx.textAlign='center';
-  const pulse=1+Math.sin(Date.now()*0.004)*0.05;
-  ctx.save();ctx.translate(W/2,H*0.28);ctx.scale(pulse,pulse);
-  ctx.font='bold 38px "KaiTi",serif';ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=30;
-  ctx.fillText('镇妖成功',0,0);ctx.restore();
-  ctx.font='18px "KaiTi",serif';ctx.fillStyle='rgba(255,215,0,0.8)';
-  ctx.fillText('百鬼王诛。酆都重归寂。',W/2,H*0.38);
-  ctx.font='24px sans-serif';ctx.fillStyle='#ffd700';ctx.fillText(`最终得分: ${score}`,W/2,H*0.47);
-  ctx.font='15px "KaiTi",serif';ctx.fillStyle='#ffd700';ctx.fillText(`收获 魂币+${runEarn.coin}  墨精+${runEarn.ink}`,W/2,H*0.54);
+  const afterPanel=panelY+rowH*3+8;
+  ctx.font='bold 28px sans-serif';ctx.fillStyle='#ffd700';ctx.shadowColor='#ffd700';ctx.shadowBlur=15;
+  ctx.fillText(`${score}`,W/2,afterPanel+8);ctx.shadowBlur=0;
+  ctx.font='12px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.fillText(`历史最佳 ${meta.bestScore}`,W/2,afterPanel+26);
+  ctx.font='bold 17px "KaiTi",serif';ctx.fillStyle='#ffd700';
+  ctx.fillText(`收获  魂币 +${runEarn.coin}   墨精 +${runEarn.ink}`,W/2,afterPanel+56);
   ctx.font='14px "KaiTi",serif';ctx.fillStyle='rgba(255,255,255,0.5)';
-  ctx.fillText('三百年了。这笔，终于写完了。',W/2,H*0.61);
-  ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,0.3)';ctx.fillText('点击返回 · 升级工坊',W/2,H*0.68);
+  ctx.fillText('笔未干。再来。',W/2,H*0.90);
+  ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.fillText('点击返回 · 升级工坊',W/2,H*0.945);
   canvas.onclick=()=>{canvas.onclick=null;showTitleMenu();};
 }
+function drawVictory(){ drawDeath(); }
 
 function applyEquipAtStart(){
   // 钟馗袍：生命
@@ -2114,11 +2180,11 @@ function resetGame(){
   currentScene=0;ambientP=[];sceneFade=1;lastSceneName=SCENES[0].name;
   // 局内进阶状态重置
   runBuffs={dmg:1,charge:1,range:1,comboWindow:2500,lifesteal:false,goldBonus:0,activateCount:0,doubleEvery:false};
-  runEarn={coin:0,ink:0};runBuffsChosen=[];waveLifestealUsed=false;runBanked=false;
+  runEarn={coin:0,ink:0};runBuffsChosen=[];waveLifestealUsed=false;runBanked=false;runStats={kills:0,maxCombo:0,goldKills:0,bossKills:0,talismanUses:0};newRecord=false;
   applyEquipAtStart();
   state='playing';
   document.getElementById('score-val').textContent='0';
-  document.getElementById('wave-val').textContent='第 1 波';
+  document.getElementById('wave-val').textContent='第 1 关';
   document.getElementById('boss-hp-bar').style.display='none';
 }
 
