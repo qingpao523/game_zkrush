@@ -231,26 +231,79 @@ canvas { display: block; width: 100%; height: 100%; }
 .fork-cancel { margin-top: 16px; font-size: 13px; color: #777; cursor: pointer; }
 
 /* ===== 标题菜单 ===== */
-#title-menu {
-  position: fixed; inset: 0; z-index: 70; display: none;
-  flex-direction: column; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 50% 40%, rgba(30,20,10,0.6), rgba(5,5,15,0.95));
-  font-family: 'KaiTi','STKaiti',serif;
-}
-#title-menu.show { display: flex; }
-.tm-name { font-size: 40px; color: #ffd700; letter-spacing: 6px; text-shadow: 0 0 30px rgba(255,215,0,0.6); margin-bottom: 10px; }
-.tm-logo { width: 300px; max-width: 74vw; margin-bottom: 40px; position: relative; z-index: 2; filter: drop-shadow(0 0 24px rgba(255,215,0,0.35)); }
-.tm-tagline { font-size: 15px; color: rgba(255,215,0,0.75); letter-spacing: 4px; margin-bottom: 18px; text-shadow: 0 0 12px rgba(255,215,0,0.3); }
-.tm-wallet { font-size: 14px; color: #ccc; margin-bottom: 34px; }
-.tm-wallet b { color: #ffd700; }
-.tm-btn {
-  width: 220px; margin: 8px 0; padding: 14px; font-size: 18px; cursor: pointer;
-  font-family: inherit; letter-spacing: 3px; border-radius: 12px;
-  background: rgba(30,25,40,0.7); border: 1px solid rgba(255,215,0,0.4); color: #eee; transition: all 0.15s;
-}
-.tm-btn:hover, .tm-btn:active { border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.3); }
-.tm-btn.primary { background: linear-gradient(160deg,#5a3a10,#3a2510); color: #ffd700; border-color: #ffd700; }
-.tm-stats { margin-top: 24px; font-size: 12px; color: #888; line-height: 1.8; text-align: center; }
+/* ===== 首页 · 判官升堂（水墨×朱砂，见 STYLE_GUIDE.md） ===== */
+#title-menu{position:fixed;inset:0;z-index:70;display:none;overflow:hidden;
+  font-family:'KaiTi','STKaiti','楷体',serif;color:#e6d5ac;}
+#title-menu.show{display:block;animation:tmFade .7s ease both;}
+@keyframes tmFade{from{opacity:0}to{opacity:1}}
+/* 背景三层：酆都原画 + 墨色暗角 + 顶部朱砂微光 */
+.tm-bg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;
+  filter:saturate(.82) brightness(.66);}
+.tm-ink{position:absolute;inset:0;z-index:1;
+  background:radial-gradient(120% 88% at 50% 30%,rgba(16,13,10,0) 0%,rgba(16,13,10,.50) 58%,rgba(8,6,5,.94) 100%),
+  linear-gradient(180deg,rgba(12,9,7,.60) 0%,rgba(12,9,7,.10) 32%,rgba(12,9,7,.30) 70%,rgba(8,6,5,.92) 100%);}
+.tm-ink::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(60% 34% at 50% 6%,rgba(184,58,46,.14),rgba(184,58,46,0) 70%);}
+/* 中央黄裱纸榜 */
+.tm-scroll{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
+  width:min(88vw,404px);max-height:93vh;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;
+  padding:34px 22px 26px;border-radius:5px;
+  background:linear-gradient(180deg,rgba(30,24,17,.90),rgba(19,15,11,.94));
+  border:1px solid rgba(169,129,74,.34);
+  box-shadow:0 26px 70px rgba(0,0,0,.62),inset 0 0 70px rgba(0,0,0,.50),inset 0 0 0 5px rgba(230,213,172,.045);}
+.tm-scroll::before{content:'';position:absolute;inset:0;z-index:-1;border-radius:5px;opacity:.07;
+  background-size:cover;background-position:center;mix-blend-mode:screen;pointer-events:none;}
+/* 顶印 + 侧标 */
+.tm-seal{width:62px;height:62px;margin-bottom:12px;opacity:.94;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));animation:tmSeal 6s ease-in-out infinite;}
+@keyframes tmSeal{0%,100%{transform:rotate(-2.5deg) scale(1)}50%{transform:rotate(-2.5deg) scale(1.035)}}
+.tm-side{position:absolute;top:40px;right:16px;z-index:4;writing-mode:vertical-rl;
+  font-size:15px;letter-spacing:9px;color:rgba(230,213,172,.42);text-shadow:0 1px 4px rgba(0,0,0,.6);}
+/* 标题 + 口号 */
+.tm-logo{width:252px;max-width:66vw;position:relative;z-index:2;margin-bottom:12px;
+  filter:brightness(1.7) sepia(.6) hue-rotate(-25deg) saturate(.4) drop-shadow(0 5px 16px rgba(0,0,0,.65));}
+.tm-tagline{font-size:15px;letter-spacing:7px;color:#cbb88a;margin-bottom:20px;
+  text-shadow:0 1px 6px rgba(0,0,0,.55);}
+/* 木牌钱包匾 */
+.tm-wallet{display:flex;align-items:center;gap:16px;font-size:14px;letter-spacing:2px;
+  color:#cbb88a;margin-bottom:24px;padding:8px 20px;border-radius:4px;
+  background:linear-gradient(180deg,rgba(46,36,24,.85),rgba(28,21,14,.9));
+  border:1px solid rgba(169,129,74,.4);box-shadow:inset 0 0 14px rgba(0,0,0,.4);}
+.tm-wallet .tm-wb{display:flex;align-items:baseline;gap:5px;}
+.tm-wallet .tm-wl{font-size:12px;color:#8a7f6a;}
+.tm-wallet b{font-weight:700;font-size:17px;}
+#tm-coin{color:#e0b860;}
+#tm-ink{color:#d1503f;}
+/* 按钮组 */
+.tm-btns{display:flex;flex-direction:column;align-items:center;gap:11px;width:100%;}
+.tm-btn{position:relative;display:flex;align-items:center;justify-content:center;gap:9px;
+  width:236px;margin:0;padding:12px 16px;font-size:17px;letter-spacing:4px;cursor:pointer;
+  font-family:inherit;color:#e6d5ac;border-radius:4px;transition:transform .12s,border-color .12s,background .12s;
+  background:linear-gradient(180deg,rgba(40,32,22,.72),rgba(24,19,13,.82));
+  border:1px solid rgba(169,129,74,.42);text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.tm-btn .tm-ic{width:21px;height:21px;object-fit:contain;flex:none;filter:brightness(1.4) sepia(.35) saturate(.85) hue-rotate(-8deg);}
+.tm-btn:hover,.tm-btn:active{transform:translateY(-1px);border-color:#c8412f;background:linear-gradient(180deg,rgba(52,40,26,.85),rgba(30,23,15,.9));}
+/* 主令：朱砂印章块 */
+.tm-btn.primary{width:268px;padding:16px;font-size:21px;letter-spacing:7px;color:#f4e6c4;
+  border:1px solid rgba(240,220,180,.5);border-radius:5px;
+  background:linear-gradient(160deg,#b83a2e,#8a2419);
+  box-shadow:0 8px 24px rgba(140,30,20,.42),inset 0 1px 0 rgba(255,220,180,.25),inset 0 0 0 3px rgba(120,20,12,.35);}
+.tm-btn.primary:hover,.tm-btn.primary:active{border-color:#f4e6c4;background:linear-gradient(160deg,#c8412f,#9c2b21);}
+.tm-btn.primary .tm-ic{width:25px;height:25px;filter:brightness(1.9) sepia(.4) saturate(.5) hue-rotate(-10deg);}
+/* 次级一行两列 */
+.tm-row{display:flex;gap:11px;width:236px;}
+.tm-row .tm-btn{flex:1;width:auto;font-size:15px;letter-spacing:2px;padding:11px 6px;}
+.tm-row .tm-btn .tm-ic{width:18px;height:18px;}
+/* 战绩 + 判官诗 */
+.tm-stats{margin-top:22px;font-size:12.5px;color:#9a8d72;line-height:1.9;letter-spacing:1px;text-align:center;}
+.tm-stats b.tm-gold{color:#e0b860;font-weight:700;}
+.tm-verse{margin-top:14px;font-size:12px;letter-spacing:3px;color:rgba(203,184,138,.5);}
+/* 黄裱浮尘 */
+.tm-motes{position:absolute;inset:0;z-index:2;pointer-events:none;}
+.tm-motes i{position:absolute;bottom:-12px;width:3px;height:3px;border-radius:50%;
+  background:rgba(230,213,172,.5);animation:tmMote linear infinite;}
+@keyframes tmMote{0%{transform:translateY(0);opacity:0}12%{opacity:.7}88%{opacity:.5}100%{transform:translateY(-104vh);opacity:0}}
 
 /* ===== 地狱画符模式 ===== */
 #hell-draw-exit{position:fixed;left:14px;top:14px;z-index:65;display:none;background:rgba(0,0,0,.4);
@@ -378,14 +431,29 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <!-- 标题菜单（开始/工坊） -->
 <div id="title-menu">
-  <img class="tm-logo" src="assets/images/ui/logo.png" alt="钟馗·一笔镇妖" onerror="this.style.display='none'">
-  <div class="tm-tagline">水 墨 画 符 · 一 笔 镇 鬼</div>
-  <div class="tm-wallet">魂币 <b id="tm-coin">0</b> · 墨精 <b id="tm-ink">0</b></div>
-  <button class="tm-btn primary" onclick="enterTutorial()">⚔️ 开始镇妖</button>
-  <button class="tm-btn" onclick="openWorkshop()">📜 升级工坊</button>
-  <button class="tm-btn" onclick="unlockShareSkin()">🔗 分享传世</button>
-  <button class="tm-btn" onclick="enterHellMode()">🔥 地狱画符</button>
-  <div class="tm-stats" id="tm-stats"></div>
+  <div class="tm-bg" id="tm-bg"></div>
+  <div class="tm-ink"></div>
+  <div class="tm-motes" id="tm-motes"></div>
+  <div class="tm-side">一笔镇妖</div>
+  <div class="tm-scroll" id="tm-scroll">
+    <img class="tm-seal" src="assets/images/hell-fu/seal-chiling.png" alt="" onerror="this.style.display='none'">
+    <img class="tm-logo" src="assets/images/ui/logo.png" alt="钟馗·一笔镇妖" onerror="this.style.display='none'">
+    <div class="tm-tagline">水 墨 画 符 · 一 笔 镇 鬼</div>
+    <div class="tm-wallet">
+      <span class="tm-wb"><span class="tm-wl">魂币</span><b id="tm-coin">0</b></span>
+      <span class="tm-wb"><span class="tm-wl">墨精</span><b id="tm-ink">0</b></span>
+    </div>
+    <div class="tm-btns">
+      <button class="tm-btn primary" onclick="enterTutorial()"><img class="tm-ic" src="assets/images/ui/talisman-icon-chi.png" alt="" onerror="this.style.display='none'">镇 妖</button>
+      <div class="tm-row">
+        <button class="tm-btn" onclick="openWorkshop()"><img class="tm-ic" src="assets/images/ui/talisman-icon-xuan.png" alt="" onerror="this.style.display='none'">工 坊</button>
+        <button class="tm-btn" onclick="enterHellMode()"><img class="tm-ic" src="assets/images/ui/talisman-icon-huo.png" alt="" onerror="this.style.display='none'">地狱画符</button>
+      </div>
+      <button class="tm-btn" onclick="unlockShareSkin()"><img class="tm-ic" src="assets/images/ui/talisman-icon-yuan.png" alt="" onerror="this.style.display='none'">分享传世</button>
+    </div>
+    <div class="tm-stats" id="tm-stats"></div>
+    <div class="tm-verse">「 朱 笔 一 勾 · 生 死 簿 上 除 名 」</div>
+  </div>
 </div>
 
 <!-- ====== 新手教程：钟馗叙事 ====== -->
@@ -560,7 +628,9 @@ const ASSET_SRC={
   hf_paper:'assets/images/hell-fu/paper-bg.png',
 };
 const ASSETS={};
-for(const k in ASSET_SRC){ const im=new Image(); im.src=ASSET_SRC[k]; ASSETS[k]=im; }
+for(const k in ASSET_SRC){ const im=new Image(); im.src=ASSET_SRC[k]; ASSETS[k]=im;
+  im.onload=function(){ if(k==='bg_fengdu'||k==='hf_paper'){ if(typeof tmDecor==='function'&&document.getElementById('title-menu')&&document.getElementById('title-menu').classList.contains('show')) tmDecor(); } };
+}
 // 返回已加载完成的图，否则 null（触发 fallback）
 function img(k){ const im=ASSETS[k]; return (im && im.complete && im.naturalWidth>0)?im:null; }
 // 等比覆盖整个画布（object-fit: cover），居中
@@ -2790,8 +2860,25 @@ function showTitleMenu(){
   state='title';
   refreshWallets();
   document.getElementById('tm-stats').innerHTML=
-    `累计斩鬼 <b style="color:#ffd700">${meta.totalKills}</b><br>最高得分 <b style="color:#ffd700">${meta.bestScore}</b>`;
+    `累计斩鬼 <b class="tm-gold">${meta.totalKills}</b> · 最高得分 <b class="tm-gold">${meta.bestScore}</b>`;
+  tmDecor();
   document.getElementById('title-menu').classList.add('show');
+}
+function tmDecor(){
+  const bg=img('bg_fengdu');
+  const bgEl=document.getElementById('tm-bg');
+  if(bgEl) bgEl.style.backgroundImage=bg?('url('+bg.src+')'):'linear-gradient(180deg,#181838,#0a0a1a)';
+  const sc=document.getElementById('tm-scroll');
+  const pp=img('hf_paper');
+  if(sc) sc.style.backgroundImage=pp?('linear-gradient(180deg,rgba(30,24,17,.90),rgba(19,15,11,.94)),url('+pp.src+')'):'linear-gradient(180deg,rgba(30,24,17,.90),rgba(19,15,11,.94))';
+  const mo=document.getElementById('tm-motes');
+  if(mo&&!mo.dataset.built){ mo.dataset.built='1';
+    for(let i=0;i<7;i++){ const d=document.createElement('i');
+      d.style.left=(6+Math.random()*88)+'%';
+      d.style.animationDuration=(9+Math.random()*8)+'s';
+      d.style.animationDelay=(-Math.random()*12)+'s';
+      d.style.opacity=(0.3+Math.random()*0.4);
+      mo.appendChild(d); } }
 }
 function enterTutorial(){
   document.getElementById('title-menu').classList.remove('show');
