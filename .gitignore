@@ -21,3 +21,6 @@ build/
 # WeChat mini-game local
 wechat-minigame/node_modules/
 wechat-minigame/.idea/
+
+# Hell-fu intermediate raw renders (not referenced; final assets are fu-*.png)
+assets/images/hell-fu/_raw/

@@ -251,6 +251,51 @@ canvas { display: block; width: 100%; height: 100%; }
 .tm-btn:hover, .tm-btn:active { border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.3); }
 .tm-btn.primary { background: linear-gradient(160deg,#5a3a10,#3a2510); color: #ffd700; border-color: #ffd700; }
 .tm-stats { margin-top: 24px; font-size: 12px; color: #888; line-height: 1.8; text-align: center; }
+
+/* ===== 地狱画符模式 ===== */
+#hell-draw-exit{position:fixed;left:14px;top:14px;z-index:65;display:none;background:rgba(0,0,0,.4);
+  border:1px solid rgba(255,215,0,.3);color:#e8d8b0;font-size:13px;padding:7px 12px;border-radius:8px;cursor:pointer;}
+#hell-draw-exit.show{display:block;}
+#hell-select{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;
+  background:radial-gradient(ellipse at 50% 0%,#1a1420 0%,#0a0810 70%);overflow-y:auto;padding:0 0 40px;}
+#hell-select.show{display:flex;}
+.hs-header{position:relative;text-align:center;padding:26px 16px 10px;}
+.hs-title{font-size:30px;font-weight:bold;color:#ffd700;letter-spacing:8px;text-shadow:0 0 20px rgba(255,215,0,.5);}
+.hs-sub{font-size:13px;color:#b8a888;letter-spacing:3px;margin-top:6px;}
+.hs-wallet{font-size:13px;color:#ddd;margin-top:10px;}
+.hs-wallet b{color:#ffd700;}
+.hs-back{position:absolute;left:14px;top:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,215,0,.3);
+  color:#e8d8b0;font-size:14px;padding:7px 14px;border-radius:8px;cursor:pointer;}
+.hs-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px;max-width:520px;margin:0 auto;width:100%;}
+.hf-card{position:relative;background:linear-gradient(160deg,#221a2e,#15101d);border:1px solid rgba(255,215,0,.22);
+  border-radius:12px;padding:10px;cursor:pointer;transition:.15s;overflow:hidden;}
+.hf-card:active{transform:scale(.97);}
+.hf-card.locked{filter:grayscale(.7) brightness(.6);cursor:not-allowed;}
+.hf-img{width:100%;height:120px;background-size:cover;background-position:center;border-radius:8px;
+  background-color:#3a2f1a;border:1px solid rgba(255,215,0,.15);}
+.hf-name{font-size:17px;font-weight:bold;color:#ffe9b0;margin-top:8px;text-align:center;}
+.hf-tier{font-size:12px;color:#a89878;text-align:center;margin-top:2px;}
+.hf-grade{display:block;text-align:center;font-size:12px;margin-top:6px;border:1px solid;border-radius:6px;padding:2px 0;}
+.hf-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+  font-size:13px;color:#ccc;background:rgba(0,0,0,.45);line-height:1.6;}
+#hell-result{position:fixed;inset:0;z-index:70;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35);}
+#hell-result.show{display:flex;}
+.hr-panel{width:100%;max-width:520px;background:linear-gradient(180deg,#1c1526,#0e0a14);
+  border-top:2px solid rgba(255,215,0,.4);border-radius:18px 18px 0 0;padding:20px 18px 26px;max-height:78vh;overflow-y:auto;}
+.hr-grade{text-align:center;font-size:34px;font-weight:bold;letter-spacing:4px;}
+.hr-fail-line{text-align:center;color:#cc6644;font-size:14px;margin-top:6px;}
+.hr-fu-name{text-align:center;color:#b8a888;font-size:14px;margin-top:8px;}
+.hr-stats{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin:14px 0;font-size:14px;color:#ccc;}
+.hr-stats b{color:#fff;}
+.hr-segs{margin:6px 0 12px;}
+.hr-seg{display:flex;align-items:center;gap:8px;font-size:12px;color:#bba;margin-bottom:5px;}
+.hr-sn{width:124px;flex-shrink:0;text-align:right;color:#d8c8a0;}
+.hr-bar{flex:1;height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;}
+.hr-bar i{display:block;height:100%;border-radius:4px;}
+.hr-sp{width:38px;flex-shrink:0;color:#eee;}
+.hr-reward{text-align:center;font-size:15px;color:#ddd;margin:8px 0 14px;}
+.hr-btns{display:flex;gap:10px;justify-content:center;}
+.hr-btns .tm-btn{flex:1;}
 </style>
 </head>
 <body>
@@ -339,6 +384,7 @@ canvas { display: block; width: 100%; height: 100%; }
   <button class="tm-btn primary" onclick="enterTutorial()">⚔️ 开始镇妖</button>
   <button class="tm-btn" onclick="openWorkshop()">📜 升级工坊</button>
   <button class="tm-btn" onclick="unlockShareSkin()">🔗 分享传世</button>
+  <button class="tm-btn" onclick="enterHellMode()">🔥 地狱画符</button>
   <div class="tm-stats" id="tm-stats"></div>
 </div>
 
@@ -502,6 +548,16 @@ const ASSET_SRC={
   gh_split:'assets/images/ghost/ghost-split.png',
   gh_hidden:'assets/images/ghost/ghost-hidden.png',
   gh_flyer:'assets/images/ghost/ghost-flyer.png',
+  hf_pingan:'assets/images/hell-fu/fu-pingan.png',
+  hf_hushen:'assets/images/hell-fu/fu-hushen.png',
+  hf_zhenzhai:'assets/images/hell-fu/fu-zhenzhai.png',
+  hf_zhaocai:'assets/images/hell-fu/fu-zhaocai.png',
+  hf_beidou:'assets/images/hell-fu/fu-beidou.png',
+  hf_taisui:'assets/images/hell-fu/fu-taisui.png',
+  hf_wulei:'assets/images/hell-fu/fu-wulei.png',
+  hf_zhongkui:'assets/images/hell-fu/fu-zhongkui.png',
+  hf_seal:'assets/images/hell-fu/seal-chiling.png',
+  hf_paper:'assets/images/hell-fu/paper-bg.png',
 };
 const ASSETS={};
 for(const k in ASSET_SRC){ const im=new Image(); im.src=ASSET_SRC[k]; ASSETS[k]=im; }
@@ -1075,6 +1131,7 @@ let meta={
   equip:{brush:0,robe:0,crown:0,charm:0}, // 0=未购，1/2/3=阶
   skins:{unlocked:['default'],selected:'default'}, // 皮肤
   totalKills:0, bestScore:0,
+  hellFu:{completed:{}}, // 地狱画符成符记录 {id:gradeKey}
 };
 TALISMAN_ORDER.forEach(n=>meta.talismans[n]={level:1,path:null});
 
@@ -1086,11 +1143,538 @@ function loadMeta(){
       if(!meta.skins)meta.skins={unlocked:['default'],selected:'default'};
       if(!meta.skins.unlocked)meta.skins.unlocked=['default'];
       if(!meta.skins.unlocked.includes('default'))meta.skins.unlocked.push('default');
+      if(!meta.hellFu)meta.hellFu={completed:{}};
+      if(!meta.hellFu.completed)meta.hellFu.completed={};
     }
   }catch(e){}
 }
 function saveMeta(){try{localStorage.setItem('zkrush_meta',JSON.stringify(meta));}catch(e){}}
 loadMeta();
+
+// ==================== 地狱画符模式 ====================
+// 独立第二玩法：临摹真实道教符箓，分段笔顺引导（描红），一笔成符得上品。
+let gameMode = 'main'; // 'main' | 'hell'
+
+const HELL_PASS = 0.70;                       // 单段通过阈值（比主模式更严）
+const GRADE_NAME = { gold:'上品', purple:'中品', blue:'下品', white:'凡符', grey:'废符' };
+const GRADE_FULL = { gold:'上品灵符', purple:'中品灵符', blue:'下品灵符', white:'凡符', grey:'废符' };
+const GRADE_COLOR = { gold:'#ffd700', purple:'#cc88ff', blue:'#66aaff', white:'#dddddd', grey:'#888888' };
+
+// ---- 笔段手势模板生成器（raw points，后续 normalizeStroke 归一化）----
+function _poly(waypoints, n){
+  n = n || 24;
+  const seg=[]; let total=0;
+  for(let i=1;i<waypoints.length;i++){
+    total += Math.hypot(waypoints[i][0]-waypoints[i-1][0], waypoints[i][1]-waypoints[i-1][1]);
+    seg.push(Math.hypot(waypoints[i][0]-waypoints[i-1][0], waypoints[i][1]-waypoints[i-1][1]));
+  }
+  const out=[{x:waypoints[0][0], y:waypoints[0][1]}];
+  const step = total/(n-1);
+  let si=0, sStart=0;
+  for(let k=1;k<n-1;k++){
+    const target=k*step;
+    while(si<seg.length && sStart+seg[si]<target){ sStart+=seg[si]; si++; }
+    if(si>=seg.length){ out.push({x:waypoints[waypoints.length-1][0], y:waypoints[waypoints.length-1][1]}); continue; }
+    const t=(target-sStart)/(seg[si]||1);
+    out.push({ x:waypoints[si][0]+t*(waypoints[si+1][0]-waypoints[si][0]),
+               y:waypoints[si][1]+t*(waypoints[si+1][1]-waypoints[si][1]) });
+  }
+  out.push({x:waypoints[waypoints.length-1][0], y:waypoints[waypoints.length-1][1]});
+  return out;
+}
+function _circle(cx,cy,r,n){
+  n=n||28; const out=[];
+  for(let i=0;i<n;i++){ const a=(i/(n-1))*Math.PI*2 - Math.PI/2; out.push({x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r}); }
+  return out;
+}
+const GESTURES={
+  heng:  ()=>_poly([[-60,0],[60,0]]),                                   // 横
+  shu:   ()=>_poly([[0,-60],[0,60]]),                                   // 竖
+  pie:   ()=>_poly([[48,-56],[12,-8],[-46,56]]),                        // 撇
+  na:    ()=>_poly([[-48,-56],[-12,-8],[46,56]]),                       // 捺
+  dian:  ()=>_poly([[-14,-18],[14,18]]),                                // 点
+  gou:   ()=>_poly([[6,-58],[6,28],[-30,6]]),                           // 勾
+  zhe:   ()=>_poly([[-46,-32],[34,-32],[34,52]]),                       // 折
+  quan:  ()=>_circle(0,0,46),                                           // 圈
+  qu:    ()=>_poly([[-42,-52],[34,-22],[-34,22],[42,52]]),              // 曲（云篆）
+  xing:  ()=>_poly([[-52,-42],[-16,-14],[20,-32],[52,8],[16,42]]),      // 星点折线
+  hook3: ()=>_poly([[-52,-22],[-52,22],[-30,4],[-8,-22],[-8,22],[14,4],[36,-22],[36,22],[56,4]]), // 三勾
+  lei:   ()=>_poly([[-36,-56],[26,-14],[-26,14],[36,56]]),              // 闪电折
+  slash: ()=>_poly([[-42,-56],[42,56]]),                                // 斜斩
+};
+
+// ---- 8 道符数据（由浅入深）----
+function _seg(name,part,gesture,note,isDan){
+  return { name, part, gesture, note, isDan:!!isDan, tpl:normalizeStroke(GESTURES[gesture]()) };
+}
+const HELL_FU=[
+  { id:'pingan', name:'平安符', tier:'入门', tierIdx:0,
+    lore:'流传最广的护身符。随身佩戴，防灾避祸，驱邪护体。', need:[],
+    segments:[
+      _seg('符头·三勾','符头','hook3','三勾落笔，三清在上。'),
+      _seg('符腹·平','符腹','heng','平，无波无澜。'),
+      _seg('符腹·安','符腹','zhe','安，室有人则宁。'),
+      _seg('符胆·一点','符胆','dian','一点成胆。符，活了。',true),
+    ]},
+  { id:'hushen', name:'护身符', tier:'入门', tierIdx:0,
+    lore:'护体驱邪，净化身心。佩之，邪不可干。', need:[],
+    segments:[
+      _seg('符头·敕令','符头','zhe','敕令一下，诸神听命。'),
+      _seg('主事·神讳','主事','qu','讳字不读，读则通神。'),
+      _seg('符腹·护','符腹','shu','护，手在身侧。'),
+      _seg('符脚·收束','符脚','gou','收笔，气不外泄。'),
+      _seg('符胆·点窍','符胆','dian','窍在此。鬼神惊。',true),
+    ]},
+  { id:'zhenzhai', name:'镇宅符', tier:'进阶', tierIdx:1,
+    lore:'贴于门楣中堂。化风水煞气，保家宅平安。', need:['pingan'],
+    segments:[
+      _seg('符头·敕令','符头','zhe','奉敕。'),
+      _seg('主事·镇','主事','shu','镇，以金压邪。'),
+      _seg('符腹·宅','符腹','heng','宅，人所居。'),
+      _seg('符腹·化煞','符腹','slash','煞来，斩之。'),
+      _seg('符脚·安镇','符脚','heng','镇于地。'),
+      _seg('符胆','符胆','dian','胆成，宅安。',true),
+    ]},
+  { id:'zhaocai', name:'招财符', tier:'进阶', tierIdx:1,
+    lore:'增进财运，招引偏财。含财神、聚宝盆符号。', need:['hushen'],
+    segments:[
+      _seg('符头·敕令','符头','zhe','敕。'),
+      _seg('主事·财神','主事','quan','财神到。'),
+      _seg('符腹·招','符腹','shu','招，手向外来。'),
+      _seg('符腹·聚宝盆','符腹','qu','盆满，钵满。'),
+      _seg('符脚','符脚','shu','财有根。'),
+      _seg('符胆','符胆','dian','一点，财入。',true),
+    ]},
+  { id:'beidou', name:'北斗符', tier:'进阶', tierIdx:1,
+    lore:'依出生年份对应北斗星君。延生解厄，护佑本命。', need:['zhenzhai'],
+    segments:[
+      _seg('符头·三勾','符头','hook3','三清。'),
+      _seg('斗魁·四星','斗魁','dian','魁，四星成斗。'),
+      _seg('斗柄·三星','斗柄','dian','柄，三星指极。'),
+      _seg('斗线·连','斗线','xing','一线，贯七星。'),
+      _seg('本命·讳字','本命','qu','本命星君，讳。'),
+      _seg('符脚','符脚','shu','落。'),
+      _seg('符胆','符胆','dian','点睛，斗转。',true),
+    ]},
+  { id:'taisui', name:'太岁符', tier:'高阶', tierIdx:2,
+    lore:'每年由道观按信众生辰开具。化解「犯太岁」之不利。', need:['zhaocai'],
+    segments:[
+      _seg('符头·敕令','符头','zhe','敕令。'),
+      _seg('主事·太岁神','主事','qu','太岁当头。'),
+      _seg('符腹·值年','符腹','heng','值年神。'),
+      _seg('符腹·化','符腹','na','化凶为吉。'),
+      _seg('符腹·解','符腹','zhe','解，厄散。'),
+      _seg('符脚·安','符脚','heng','安。'),
+      _seg('符脚·镇','符脚','gou','镇。'),
+      _seg('符胆','符胆','dian','胆成，岁安。',true),
+    ]},
+  { id:'wulei', name:'五雷符', tier:'高阶', tierIdx:2,
+    lore:'正一派核心符箓。召雷部神将，驱邪缚魅，象征「代天行罚」。配五雷斩鬼印。', need:['beidou','taisui'],
+    segments:[
+      _seg('符头·雷','符头','lei','雷，天之怒。'),
+      _seg('五雷·号令','五雷','zhe','号令五雷。'),
+      _seg('雷部·神将','雷部','gou','神将听召。'),
+      _seg('雷部·电','雷部','lei','电灼。'),
+      _seg('符腹·驱邪','符腹','slash','驱邪。'),
+      _seg('符腹·缚魅','符腹','quan','缚魅。'),
+      _seg('符腹·禳灾','符腹','zhe','禳灾。'),
+      _seg('符腹·解厄','符腹','pie','解厄。'),
+      _seg('符脚','符脚','shu','代天行罚。'),
+      _seg('符胆','符胆','dian','胆落，雷发。鬼神叫。',true),
+    ]},
+  { id:'zhongkui', name:'钟馗镇邪符', tier:'地狱', tierIdx:3,
+    lore:'钟馗，赐福镇宅圣君，三大伏魔帝君之一。专司打鬼驱邪，万应之神。',
+    need:['pingan','hushen','zhenzhai','zhaocai','beidou','taisui','wulei'],
+    segments:[
+      _seg('符头·敕令','符头','zhe','敕令。'),
+      _seg('主事·钟馗讳','主事','qu','钟馗，终南进士。'),
+      _seg('神格·圣君','神格','heng','赐福镇宅圣君。'),
+      _seg('神格·帝君','神格','shu','驱魔辟邪帝君。'),
+      _seg('符腹·镇','符腹','shu','镇。'),
+      _seg('符腹·邪','符腹','zhe','邪。'),
+      _seg('斩鬼·利剑','斩鬼','shu','一剑。'),
+      _seg('斩鬼·鬼首','斩鬼','quan','鬼，斩。'),
+      _seg('五毒·斩','五毒','lei','五毒，尽斩。'),
+      _seg('符脚·伏魔','符脚','zhe','伏魔。'),
+      _seg('符脚·赐福','符脚','na','赐福。'),
+      _seg('符胆·点睛','符胆','dian','一笔镇妖。馗，在此。',true),
+    ]},
+];
+const HELL_FU_BY_ID={}; HELL_FU.forEach(f=>HELL_FU_BY_ID[f.id]=f);
+
+// ---- 运行时状态 ----
+let hell={
+  state:'select', fu:null, segIdx:0, segScores:[], breaks:0, completed:[],
+  stroke:{active:false, points:[], brush:[]},
+  result:null, failFlash:0, segFlash:0, sealT:0, burnT:0, resultShown:false,
+  paperRect:null, lastSnd:0,
+};
+
+function hellUnlocked(fu){
+  if(!fu.need.length) return true;
+  const comp=(meta.hellFu && meta.hellFu.completed) ? meta.hellFu.completed : {};
+  return fu.need.every(id=>comp[id]);
+}
+function hellBestGrade(id){
+  return (meta.hellFu && meta.hellFu.completed) ? meta.hellFu.completed[id] : null;
+}
+
+// ---- 进入 / 退出 ----
+function enterHellMode(){
+  gameMode='hell';
+  document.getElementById('title-menu').classList.remove('show');
+  hell.state='select';
+  renderHellSelect();
+  document.getElementById('hell-select').classList.add('show');
+}
+function exitHellMode(){
+  gameMode='main';
+  document.getElementById('hell-select').classList.remove('show');
+  document.getElementById('hell-result').classList.remove('show');
+  document.getElementById('hell-draw-exit').classList.remove('show');
+  showTitleMenu();
+}
+function backToHellSelect(){
+  document.getElementById('hell-result').classList.remove('show');
+  document.getElementById('hell-draw-exit').classList.remove('show');
+  hell.state='select';
+  renderHellSelect();
+  document.getElementById('hell-select').classList.add('show');
+}
+
+// ---- 选符图鉴 ----
+function renderHellSelect(){
+  const grid=document.getElementById('hell-grid');
+  grid.innerHTML='';
+  HELL_FU.forEach(fu=>{
+    const unlocked=hellUnlocked(fu);
+    const best=hellBestGrade(fu.id);
+    const card=document.createElement('div');
+    card.className='hf-card'+(unlocked?'':' locked');
+    const badge=best?`<span class="hf-grade" style="color:${GRADE_COLOR[best]};border-color:${GRADE_COLOR[best]}">${GRADE_NAME[best]}</span>`:'';
+    card.innerHTML=
+      `<div class="hf-img" style="background-image:url('${ASSET_SRC['hf_'+fu.id]}')"></div>`+
+      `<div class="hf-name">${fu.name}</div>`+
+      `<div class="hf-tier">${fu.tier} · ${fu.segments.length}段</div>`+
+      badge+
+      (unlocked?'':`<div class="hf-lock">🔒<br>需先成前置符</div>`);
+    if(unlocked) card.onclick=()=>startHellFu(fu.id);
+    grid.appendChild(card);
+  });
+  document.getElementById('hell-coin').textContent=meta.coin;
+  document.getElementById('hell-ink').textContent=meta.ink;
+}
+
+function startHellFu(id){
+  gameMode='hell';
+  const fu=HELL_FU_BY_ID[id];
+  hell.fu=fu; hell.segIdx=0; hell.segScores=[]; hell.breaks=0; hell.completed=[];
+  hell.stroke={active:false,points:[],brush:[]};
+  hell.result=null; hell.failFlash=0; hell.segFlash=0; hell.sealT=0; hell.burnT=0; hell.resultShown=false;
+  hell.state='drawing';
+  document.getElementById('hell-select').classList.remove('show');
+  document.getElementById('hell-result').classList.remove('show');
+  document.getElementById('hell-draw-exit').classList.add('show');
+}
+
+// ---- 输入 ----
+function hellPointerDown(e){
+  if(hell.state!=='drawing')return;
+  const x=e.clientX,y=e.clientY;
+  hell.stroke.active=true;
+  hell.stroke.points=[{x,y}];
+  hell.stroke.brush=[{x,y,w:7}];
+}
+function hellPointerMove(e){
+  if(!hell.stroke.active)return;
+  const x=e.clientX,y=e.clientY;
+  const last=hell.stroke.points[hell.stroke.points.length-1];
+  if(Math.hypot(x-last.x,y-last.y)<3)return;
+  hell.stroke.points.push({x,y});
+  hell.stroke.brush.push({x,y,w:7});
+  const now=Date.now();
+  if(now-hell.lastSnd>70){ playBrush(0.4); hell.lastSnd=now; }
+}
+function hellPointerUp(){
+  if(!hell.stroke.active)return;
+  hell.stroke.active=false;
+  if(hell.state!=='drawing')return;
+  const pts=hell.stroke.points;
+  hell.stroke.brush=[];
+  if(pts.length<6) return; // 太短：忽略，不计断笔
+  const seg=hell.fu.segments[hell.segIdx];
+  const score=matchSegmentScore(pts, seg.tpl);
+  if(score>=HELL_PASS){
+    hell.segScores.push(score);
+    hell.completed.push({seg, score});
+    hell.segIdx++;
+    hell.segFlash=1;
+    playChime(seg.isDan);
+    if(navigator.vibrate)navigator.vibrate(20);
+    if(hell.segIdx>=hell.fu.segments.length) finishHellFu();
+  } else {
+    hell.breaks++;          // 断笔：失败/犹豫的一次提笔
+    hell.failFlash=1;
+    playHellFail();
+    if(navigator.vibrate)navigator.vibrate(45);
+    if(hell.breaks>=hellMaxBreaks()) finishHellFu(true); // 失败太多次，符纸焦黑
+  }
+}
+
+// 单段匹配：复用 normalizeStroke + $1 距离
+function matchSegmentScore(pts, tpl){
+  if(pts.length<6)return 0;
+  const norm=normalizeStroke(pts.map(p=>({x:p.x,y:p.y})));
+  let d=0;
+  for(let i=0;i<32;i++) d+=Math.hypot(norm[i].x-tpl[i].x, norm[i].y-tpl[i].y);
+  d/=32;
+  return Math.max(0, Math.min(1, 1-d*2.5));
+}
+
+// ---- 成符结算 ----
+function hellMaxBreaks(){ return hell.fu.segments.length+4; }
+function finishHellFu(ruined){
+  const avg=hell.segScores.length?hell.segScores.reduce((a,b)=>a+b,0)/hell.segScores.length:0;
+  const coef=hell.breaks===0?1.30:hell.breaks<=2?1.00:0.80;
+  const score=Math.min(1, avg*coef);
+  const oneStroke=hell.breaks===0;
+  let gkey;
+  if(ruined) gkey='grey';
+  else if(score>=0.90 && oneStroke) gkey='gold';
+  else if(score>=0.75) gkey='purple';
+  else if(score>=0.60) gkey='blue';
+  else if(score>=0.40) gkey='white';
+  else gkey='grey';
+  const success=gkey!=='grey';
+  let coin=0, ink=0;
+  if(success){
+    const tierCoin=[20,40,70,120][hell.fu.tierIdx];
+    const gmul={gold:2,purple:1.5,blue:1.2,white:1}[gkey];
+    coin=Math.round(tierCoin*gmul);
+    if(gkey==='gold')ink=3; else if(gkey==='purple')ink=1;
+    if(hell.fu.tierIdx===3)ink+=2;
+    meta.coin+=coin; meta.ink+=ink;
+    if(!meta.hellFu)meta.hellFu={completed:{}};
+    if(!meta.hellFu.completed)meta.hellFu.completed={};
+    const rank={gold:5,purple:4,blue:3,white:2,grey:1};
+    const prev=meta.hellFu.completed[hell.fu.id];
+    if(!prev || rank[gkey]>rank[prev]) meta.hellFu.completed[hell.fu.id]=gkey;
+    saveMeta();
+    playSeal();
+  } else {
+    playHellFail();
+  }
+  hell.result={avg, coef, score, oneStroke, gkey, breaks:hell.breaks, coin, ink, success, ruined:!!ruined};
+  document.getElementById('hell-draw-exit').classList.remove('show');
+  hell.state='result';
+  hell.sealT=0; hell.burnT=0; hell.resultShown=false;
+}
+
+// ---- 更新 ----
+function updateHell(dt){
+  if(hell.failFlash>0)hell.failFlash=Math.max(0,hell.failFlash-dt*0.002);
+  if(hell.segFlash>0)hell.segFlash=Math.max(0,hell.segFlash-dt*0.0016);
+  if(hell.state==='result'){
+    if(hell.result.success) hell.sealT=Math.min(1,hell.sealT+dt*0.0016);
+    else hell.burnT=Math.min(1,hell.burnT+dt*0.0012);
+    if(!hell.resultShown && (hell.sealT>0.5||hell.burnT>0.5)) showHellResult();
+  }
+}
+
+// ---- 结算面板（DOM）----
+function showHellResult(){
+  hell.resultShown=true;
+  const r=hell.result, fu=hell.fu;
+  let segBars='';
+  hell.completed.forEach((c,i)=>{
+    const pct=Math.round(c.score*100);
+    segBars+=`<div class="hr-seg"><span class="hr-sn">${i+1}.${c.seg.name}</span><div class="hr-bar"><i style="width:${pct}%;background:${c.score>=HELL_PASS?'#ffd700':'#cc4444'}"></i></div><span class="hr-sp">${pct}%</span></div>`;
+  });
+  const el=document.getElementById('hell-result');
+  el.innerHTML=
+    `<div class="hr-panel">`+
+      `<div class="hr-grade" style="color:${GRADE_COLOR[r.gkey]};text-shadow:0 0 26px ${GRADE_COLOR[r.gkey]}">${GRADE_FULL[r.gkey]}</div>`+
+      (r.success?'':`<div class="hr-fail-line">「画符不知窍，反惹鬼神笑。」</div>`)+
+      `<div class="hr-fu-name">${fu.name} · ${fu.tier}</div>`+
+      `<div class="hr-stats">`+
+        `<div>综合 <b style="color:${GRADE_COLOR[r.gkey]}">${Math.round(r.score*100)}</b></div>`+
+        `<div>平均 <b>${Math.round(r.avg*100)}</b></div>`+
+        `<div>断笔 <b style="color:${r.breaks===0?'#ffd700':'#cc6666'}">${r.breaks}</b></div>`+
+        `<div>${r.oneStroke?'<b style="color:#ffd700">✦ 一笔成符 ×1.30</b>':'连笔 ×'+r.coef.toFixed(2)}</div>`+
+      `</div>`+
+      `<div class="hr-segs">${segBars}</div>`+
+      (r.success?`<div class="hr-reward">得 魂币 <b style="color:#ffd700">+${r.coin}</b> · 墨精 <b style="color:#88ddff">+${r.ink}</b></div>`:'')+
+      `<div class="hr-btns">`+
+        `<button class="tm-btn primary" onclick="startHellFu('${fu.id}')">再画一次</button>`+
+        `<button class="tm-btn" onclick="backToHellSelect()">选符</button>`+
+        `<button class="tm-btn" onclick="exitHellMode()">返回</button>`+
+      `</div>`+
+    `</div>`;
+  el.classList.add('show');
+}
+
+// ---- 渲染（canvas）----
+function renderHell(){
+  ctx.save();
+  ctx.clearRect(0,0,W,H);
+  if(hell.state==='select'){ ctx.restore(); return; } // 选符页由 DOM 呈现
+  computePaperRect();
+  drawHellPaper();
+  if(hell.state==='drawing') drawHellDrawing();
+  else if(hell.state==='result') drawHellResultScene();
+  ctx.restore();
+}
+function computePaperRect(){
+  const topM=H*0.13, botM=H*0.16;
+  const availH=H-topM-botM;
+  let pw=Math.min(W*0.86, 480);
+  let ph=pw*1.5;
+  if(ph>availH){ ph=availH; pw=ph/1.5; }
+  hell.paperRect={ x:(W-pw)/2, y:topM+(availH-ph)/2, w:pw, h:ph };
+}
+function drawHellPaper(){
+  const r=hell.paperRect;
+  ctx.fillStyle='#0a0a12'; ctx.fillRect(0,0,W,H);
+  const pimg=img('hf_paper');
+  if(pimg) ctx.drawImage(pimg, r.x,r.y,r.w,r.h);
+  else { ctx.fillStyle='#d4b483'; ctx.fillRect(r.x,r.y,r.w,r.h); }
+  ctx.strokeStyle='rgba(120,20,20,0.5)'; ctx.lineWidth=2; ctx.strokeRect(r.x+4,r.y+4,r.w-8,r.h-8);
+  if(hell.fu){
+    const fimg=img('hf_'+hell.fu.id);
+    if(fimg){ ctx.globalAlpha=0.20; ctx.drawImage(fimg, r.x+r.w*0.1, r.y+r.h*0.04, r.w*0.8, r.h*0.92); ctx.globalAlpha=1; }
+  }
+}
+function segSlot(i, N){
+  const r=hell.paperRect;
+  const cx=r.x+r.w*0.5 + (i%2? 1:-1)*r.w*0.07;
+  const cy=r.y+r.h*(0.09 + 0.82*(i+0.5)/N);
+  const cell=Math.min(r.w*0.40, (r.h*0.82/N)*0.92);
+  return {cx, cy, cell};
+}
+function drawSegShape(tpl, slot, style, lw, alpha){
+  const s=slot.cell;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.strokeStyle=style; ctx.lineWidth=lw;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath();
+  for(let i=0;i<tpl.length;i++){
+    const x=slot.cx+tpl[i].x*s, y=slot.cy+tpl[i].y*s;
+    if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function drawHellStroke(){
+  const b=hell.stroke.brush;
+  if(b.length<2)return;
+  ctx.save(); ctx.strokeStyle='#b8231f'; ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let i=1;i<b.length;i++){
+    ctx.lineWidth=b[i].w;
+    ctx.beginPath(); ctx.moveTo(b[i-1].x,b[i-1].y); ctx.lineTo(b[i].x,b[i].y); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawHellDrawing(){
+  const fu=hell.fu, N=fu.segments.length;
+  for(let i=0;i<hell.completed.length;i++){
+    const c=hell.completed[i]; drawSegShape(c.seg.tpl, segSlot(i,N), 'rgba(255,215,0,0.9)', 3, 0.92);
+  }
+  if(hell.segIdx<N){
+    const seg=fu.segments[hell.segIdx]; const slot=segSlot(hell.segIdx,N);
+    const pulse=0.5+0.5*Math.sin(Date.now()*0.005);
+    ctx.save(); ctx.shadowColor='#ffd700'; ctx.shadowBlur=18*pulse+8;
+    drawSegShape(seg.tpl, slot, `rgba(255,215,0,${0.35+0.3*pulse})`, 4, 1);
+    ctx.restore();
+    ctx.fillStyle='rgba(255,215,0,0.55)'; ctx.font='12px serif'; ctx.textAlign='center';
+    ctx.fillText(seg.part, slot.cx, slot.cy-slot.cell*0.72);
+  }
+  drawHellStroke();
+  if(hell.failFlash>0){
+    const slot=segSlot(Math.min(hell.segIdx,N-1),N);
+    ctx.save(); ctx.globalAlpha=hell.failFlash*0.6; ctx.fillStyle='#222';
+    ctx.beginPath(); ctx.arc(slot.cx,slot.cy,slot.cell*0.7,0,7); ctx.fill(); ctx.restore();
+    ctx.fillStyle=`rgba(200,60,60,${hell.failFlash})`; ctx.font='bold 20px serif'; ctx.textAlign='center';
+    ctx.fillText('焦', slot.cx, slot.cy+7);
+  }
+  if(hell.segFlash>0 && hell.completed.length>0){
+    const i=hell.completed.length-1; const slot=segSlot(i,N);
+    ctx.save(); ctx.globalAlpha=hell.segFlash*0.5; ctx.strokeStyle='#ffd700'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(slot.cx,slot.cy,slot.cell*(0.7+(1-hell.segFlash)*0.4),0,7); ctx.stroke(); ctx.restore();
+  }
+  drawHellHUD();
+}
+function drawHellHUD(){
+  const fu=hell.fu, N=fu.segments.length;
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffd700'; ctx.font='bold 22px serif';
+  ctx.fillText(fu.name, W/2, H*0.05);
+  ctx.fillStyle='rgba(255,215,0,0.6)'; ctx.font='13px serif';
+  ctx.fillText(`${fu.tier} · 第 ${Math.min(hell.segIdx+1,N)}/${N} 段`, W/2, H*0.05+22);
+  if(hell.segIdx<N){
+    const seg=fu.segments[hell.segIdx];
+    ctx.fillStyle='#e8d8b0'; ctx.font='17px serif';
+    ctx.fillText('「'+seg.note+'」', W/2, H*0.90);
+    ctx.fillStyle='rgba(255,215,0,0.75)'; ctx.font='bold 15px serif';
+    ctx.fillText('▶ '+seg.name, W/2, H*0.90+26);
+  }
+  ctx.textAlign='right';
+  ctx.fillStyle=hell.breaks===0?'#ffd700':'#cc8888'; ctx.font='13px serif';
+  ctx.fillText('断笔 '+hell.breaks+(hell.breaks===0?' ✦一笔成符':''), W-14, H*0.05);
+  ctx.textAlign='left';
+  ctx.fillStyle='rgba(200,180,140,0.5)'; ctx.font='12px serif';
+  ctx.fillText('照金光笔顺描画 · 一气呵成得上品', 14, H*0.05);
+}
+function drawHellResultScene(){
+  const fu=hell.fu, N=fu.segments.length, r=hell.result;
+  if(r.success){
+    for(let i=0;i<hell.completed.length;i++){
+      const c=hell.completed[i]; drawSegShape(c.seg.tpl, segSlot(i,N), '#ffd700', 3.5, 1);
+    }
+    ctx.save(); ctx.globalAlpha=0.15+0.1*Math.sin(Date.now()*0.004);
+    ctx.fillStyle='#ffd700'; ctx.fillRect(hell.paperRect.x,hell.paperRect.y,hell.paperRect.w,hell.paperRect.h); ctx.restore();
+    const simg=img('hf_seal');
+    if(simg){
+      const t=hell.sealT; const ease=1-Math.pow(1-t,3);
+      const size=hell.paperRect.w*0.42*(1.6-0.6*ease);
+      ctx.save(); ctx.globalAlpha=Math.min(1,t*1.5);
+      ctx.translate(hell.paperRect.x+hell.paperRect.w*0.66, hell.paperRect.y+hell.paperRect.h*0.74);
+      ctx.rotate(-0.12);
+      ctx.drawImage(simg, -size/2,-size/2,size,size);
+      ctx.restore();
+    }
+  } else {
+    for(let i=0;i<hell.completed.length;i++){
+      const c=hell.completed[i]; drawSegShape(c.seg.tpl, segSlot(i,N), '#333', 3.5, 1);
+    }
+    ctx.save(); ctx.globalAlpha=hell.burnT*0.7;
+    const grd=ctx.createRadialGradient(hell.paperRect.x+hell.paperRect.w/2,hell.paperRect.y+hell.paperRect.h/2,10, hell.paperRect.x+hell.paperRect.w/2,hell.paperRect.y+hell.paperRect.h/2,hell.paperRect.h*0.7);
+    grd.addColorStop(0,'#000'); grd.addColorStop(1,'rgba(40,20,10,0)');
+    ctx.fillStyle=grd; ctx.fillRect(hell.paperRect.x,hell.paperRect.y,hell.paperRect.w,hell.paperRect.h);
+    ctx.restore();
+  }
+}
+
+// ---- 音效 ----
+function playChime(isDan){
+  ensureAudio(); const t=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(isDan?880:660,t); o.frequency.exponentialRampToValueAtTime(isDan?1320:990,t+0.15);
+  g.gain.setValueAtTime(0.18,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+  o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.5);
+  if(isDan){ const o2=audioCtx.createOscillator(),g2=audioCtx.createGain(); o2.type='triangle'; o2.frequency.setValueAtTime(1760,t); g2.gain.setValueAtTime(0.1,t); g2.gain.exponentialRampToValueAtTime(0.001,t+0.7); o2.connect(g2).connect(audioCtx.destination); o2.start(t); o2.stop(t+0.7); }
+}
+function playHellFail(){
+  ensureAudio(); const t=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sawtooth'; o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(60,t+0.25);
+  g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+  o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.3);
+}
+function playSeal(){
+  ensureAudio(); const t=audioCtx.currentTime;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='square'; o.frequency.setValueAtTime(90,t); o.frequency.exponentialRampToValueAtTime(40,t+0.2);
+  g.gain.setValueAtTime(0.25,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.35);
+  o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+0.35);
+}
 
 // ==================== 皮肤系统 ====================
 // trail=墨迹主色 glow=蓄力/笔尖光 glyph=激活符字色
@@ -1359,6 +1943,7 @@ function killBoss(){
 // ==================== 输入 ====================
 canvas.addEventListener('pointerdown',(e)=>{
   e.preventDefault(); ensureAudio();
+  if(gameMode==='hell'){hellPointerDown(e);return;}
   if(state!=='playing')return;
   const x=e.clientX,y=e.clientY;
   drawing.active=true;
@@ -1371,6 +1956,7 @@ canvas.addEventListener('pointerdown',(e)=>{
 });
 
 canvas.addEventListener('pointermove',(e)=>{
+  if(gameMode==='hell'){hellPointerMove(e);return;}
   if(!drawing.active)return;
   const x=e.clientX,y=e.clientY;
   const last=drawing.points[drawing.points.length-1];
@@ -1395,12 +1981,13 @@ canvas.addEventListener('pointermove',(e)=>{
 });
 
 canvas.addEventListener('pointerup',()=>{
+  if(gameMode==='hell'){hellPointerUp();return;}
   if(!drawing.active)return;
   drawing.active=false;
   highlightTalisman('');
   activateTalisman();
 });
-canvas.addEventListener('pointercancel',()=>{drawing.active=false;drawing.brush=[];drawing.splash=[];highlightTalisman('');});
+canvas.addEventListener('pointercancel',()=>{if(gameMode==='hell'){hellPointerUp();return;}drawing.active=false;drawing.brush=[];drawing.splash=[];highlightTalisman('');});
 
 function highlightTalisman(name) {
   document.querySelectorAll('#talisman-bar .t-item').forEach(el=>{
@@ -1698,6 +2285,7 @@ function loop(){
 }
 
 function update(dt){
+  if(gameMode==='hell'){updateHell(dt);return;}
   if(state!=='playing')return;
   if(waveDelay>0){waveDelay-=dt;}
   else{
@@ -1804,6 +2392,7 @@ function update(dt){
 
 // ==================== 渲染 ====================
 function render(){
+  if(gameMode==='hell'){renderHell();return;}
   ctx.save();ctx.translate(shake.x,shake.y);
   ctx.clearRect(-20,-20,W+40,H+40);
   drawBg();drawCenter();drawGhosts();drawBoss();drawActivations();drawStroke();drawParticles();drawFloats();
@@ -2197,6 +2786,7 @@ function refreshWallets(){
   set('ws',meta.coin,meta.ink);
 }
 function showTitleMenu(){
+  gameMode='main';
   state='title';
   refreshWallets();
   document.getElementById('tm-stats').innerHTML=
@@ -2444,5 +3034,17 @@ function closeFork(){
 // 启动：进标题菜单
 showTitleMenu();
 </script>
+
+<button id="hell-draw-exit" onclick="backToHellSelect()">✕ 退出画符</button>
+<div id="hell-select">
+  <div class="hs-header">
+    <button class="hs-back" onclick="exitHellMode()">← 返回</button>
+    <div class="hs-title">地狱画符</div>
+    <div class="hs-sub">临摹真符 · 一笔成符 · 上品灵符</div>
+    <div class="hs-wallet">魂币 <b id="hell-coin">0</b> · 墨精 <b id="hell-ink">0</b></div>
+  </div>
+  <div id="hell-grid" class="hs-grid"></div>
+</div>
+<div id="hell-result"></div>
 </body>
 </html>
