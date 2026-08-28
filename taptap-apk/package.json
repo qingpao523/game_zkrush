@@ -1,0 +1,22 @@
+{
+  "name": "zhongkui-yibizhenyao",
+  "version": "1.0.0",
+  "description": "钟馗·一笔镇妖 — TapTap Android 包壳工程 (Capacitor WebView wrapper)",
+  "author": "qingpao523",
+  "license": "UNLICENSED",
+  "scripts": {
+    "assets": "npx @capacitor/assets generate --android",
+    "add:android": "npx cap add android",
+    "sync": "npx cap sync android",
+    "open:android": "npx cap open android",
+    "build:apk": "bash build-apk.sh"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "appId": "com.zhongkui.yibizhenyao",
+  "appName": "钟馗一笔镇妖",
+  "webDir": "www",
+  "backgroundColor": "#0a0a1a",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0a0a1a"
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0a1a",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
+  }
+}

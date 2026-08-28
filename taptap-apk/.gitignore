@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Generated native platforms (regenerate via `npx cap add android`)
+android/
+ios/
+
+# Temp / logs
+resources/.tmp/
+*.log
+.DS_Store
+local.properties
