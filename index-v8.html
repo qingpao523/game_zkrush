@@ -329,7 +329,17 @@ canvas { display: block; width: 100%; height: 100%; }
 .hf-name{font-size:17px;font-weight:bold;color:#ffe9b0;margin-top:8px;text-align:center;}
 .hf-tier{font-size:12px;color:#a89878;text-align:center;margin-top:2px;}
 .hf-grade{display:block;text-align:center;font-size:12px;margin-top:6px;border:1px solid;border-radius:6px;padding:2px 0;}
-.hf-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+.hf-pips { display:flex; justify-content:center; gap:5px; margin:6px 0 2px; }
+.hf-pip {
+  width:19px; height:19px; line-height:17px; text-align:center; font-size:11px;
+  border:1px solid #a9814a; border-radius:3px; color:#e8d8b0; cursor:pointer;
+  background:rgba(0,0,0,0.25); transition:transform .12s;
+}
+.hf-pip:hover { transform:scale(1.18); }
+.hf-pip.off { opacity:0.28; cursor:not-allowed; border-color:#5a5145; }
+.hf-pip.off:hover { transform:none; }
+.hs-mastery { color:#a9814a; font-size:12px; letter-spacing:2px; margin:-4px 0 12px; }
+.hf-lock {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
   font-size:13px;color:#ccc;background:rgba(0,0,0,.45);line-height:1.6;}
 #hell-result{position:fixed;inset:0;z-index:70;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.35);}
 #hell-result.show{display:flex;}
@@ -1374,10 +1384,12 @@ const HELL_FU_BY_ID={}; HELL_FU.forEach(f=>HELL_FU_BY_ID[f.id]=f);
 
 // ---- 运行时状态 ----
 let hell={
-  state:'select', fu:null, segIdx:0, segScores:[], breaks:0, completed:[],
+  state:'select', fu:null, diff:1, segIdx:0, segScores:[], breaks:0, completed:[],
   stroke:{active:false, points:[], brush:[]},
   result:null, failFlash:0, segFlash:0, sealT:0, burnT:0, resultShown:false,
   paperRect:null, lastSnd:0,
+  // v2 战斗状态
+  paperHp:6, paperMaxHp:6, spawnT:0, kills:0, bossKills:0, bossSpawned:0, elapsed:0
 };
 
 function hellUnlocked(fu){
@@ -1388,6 +1400,266 @@ function hellUnlocked(fu){
 function hellBestGrade(id){
   return (meta.hellFu && meta.hellFu.completed) ? meta.hellFu.completed[id] : null;
 }
+
+/* ============================================================
+   地狱画符 v2 —— 画符即战（依据 HELLFU_DESIGN.md 第九章）
+   ============================================================ */
+
+// ---- 难度配置：基准(按符阶级) × 难度系数 ----
+const HELL_TIER_BASE={
+  0:{interval:2600, max:4,  paper:6, types:['normal','fast','zigzag']},
+  1:{interval:2000, max:6,  paper:5, types:['normal','fast','zigzag','round','fire']},
+  2:{interval:1500, max:8,  paper:4, types:['normal','fast','zigzag','round','fire','split','shield']},
+  3:{interval:1100, max:10, paper:4, types:['normal','fast','zigzag','round','fire','split','shield','hidden','flyer']}
+};
+const HELL_DIFFS=[
+  {n:1, name:'一重', spawnMul:1.00, extra:0, paperD:0,  spd:1.00, hp:1.00, boss:0},
+  {n:2, name:'二重', spawnMul:0.80, extra:2, paperD:-1, spd:1.05, hp:1.15, boss:0},
+  {n:3, name:'三重', spawnMul:0.65, extra:4, paperD:-1, spd:1.15, hp:1.35, boss:0},
+  {n:4, name:'四重', spawnMul:0.50, extra:6, paperD:-2, spd:1.30, hp:1.60, boss:1},
+  {n:5, name:'五重', spawnMul:0.40, extra:8, paperD:-2, spd:1.45, hp:2.00, boss:2}
+];
+const TIER_PHASE=[1.0,1.6,2.4,3.4]; // 符力波阶段系数
+
+function hellDiff(){ return HELL_DIFFS[(hell.diff||1)-1]; }
+
+// ---- 存档结构迁移：completed:{id:grade} -> grades:{id:{diff:grade}} ----
+function hellMigrateSave(){
+  if(!meta.hellFu) meta.hellFu={};
+  if(!meta.hellFu.grades) meta.hellFu.grades={};
+  if(!meta.hellFu.mastery) meta.hellFu.mastery=[];
+  if(meta.hellFu.completed){
+    for(const id in meta.hellFu.completed){
+      const g=meta.hellFu.completed[id];
+      if(g && !meta.hellFu.grades[id]) meta.hellFu.grades[id]={1:g};
+    }
+  }
+}
+function hellGradeOf(id,diff){
+  hellMigrateSave();
+  const m=meta.hellFu.grades[id];
+  return m?m[diff]:null;
+}
+function hellBestAny(id){
+  hellMigrateSave();
+  const m=meta.hellFu.grades[id]; if(!m)return null;
+  const rank={gold:5,purple:4,blue:3,white:2,grey:1};
+  let best=null,bv=0;
+  for(const d in m){ if(rank[m[d]]>bv){bv=rank[m[d]];best=m[d];} }
+  return best;
+}
+function hellSaveGrade(id,diff,gkey){
+  hellMigrateSave();
+  const rank={gold:5,purple:4,blue:3,white:2,grey:1};
+  if(!meta.hellFu.grades[id]) meta.hellFu.grades[id]={};
+  const prev=meta.hellFu.grades[id][diff];
+  if(!prev || rank[gkey]>rank[prev]) meta.hellFu.grades[id][diff]=gkey;
+  if(gkey==='gold' && meta.hellFu.mastery.indexOf(id)<0) meta.hellFu.mastery.push(id);
+  saveMeta();
+}
+
+// ---- 解锁：难度一按前置符；难度N+1需该符难度N达中品(紫)以上 ----
+function hellFuUnlocked(fu,diff){
+  if(diff===1) return fu.need.every(id=>hellBestAny(id));
+  const prev=hellGradeOf(fu.id,diff-1);
+  return !!prev && (prev==='gold'||prev==='purple');
+}
+function hellDiffUnlocked(id,diff){
+  if(diff===1) return hellFuUnlocked(HELL_FU_BY_ID[id],1);
+  const prev=hellGradeOf(id,diff-1);
+  return !!prev && (prev==='gold'||prev==='purple');
+}
+
+// ---- 符力波：段伤 = (1+段进度*4) × 阶段系数 × 精准系数 ----
+function hellSegDamage(score,isDan){
+  const prog=(hell.segIdx+1)/hell.fu.segments.length; // segIdx 尚未 ++ 时
+  const base=(1+prog*4)*TIER_PHASE[hell.fu.tierIdx]*(0.6+score*0.8);
+  return Math.max(1, Math.ceil(base*(isDan?3:1)));
+}
+function hellSegKnock(isDan){
+  const prog=(hell.segIdx+1)/hell.fu.segments.length;
+  return (40+prog*70)*(isDan?2.5:1);
+}
+
+// ---- 鬼 ----
+function hellSpawnGhost(type){
+  const base=GHOST_TYPES[type]||GHOST_TYPES.normal;
+  const d=hellDiff();
+  const pr=computePaperRect();
+  // 从屏幕四边外出生
+  const side=Math.floor(Math.random()*4);
+  let x,y;
+  if(side===0){x=Math.random()*W;y=-30;}
+  else if(side===1){x=W+30;y=Math.random()*H;}
+  else if(side===2){x=Math.random()*W;y=H+30;}
+  else{x=-30;y=Math.random()*H;}
+  const hp=Math.max(1,Math.round(base.hp*d.hp));
+  ghosts.push({
+    x:x,y:y,type:type,hp:hp,maxHp:hp,
+    r:Math.round(base.r*0.9),
+    color:base.color||'#88cc99',
+    speed:base.spd*d.spd*0.55,
+    weakness:'雷符',phase:Math.random()*6.28,alive:true,
+    frozen:0,burning:0,hitFlash:0,
+    splits:0,cloaks:0,flies:0,hidePhase:0,alpha:1,
+    flyT:Math.random()*6.28,flyAmp:30+Math.random()*40
+  });
+}
+function hellWaveDamage(dmg,knock){
+  const pr=computePaperRect();
+  const cx=pr.x+pr.w/2, cy=pr.y+pr.h/2;
+  for(const g of ghosts){
+    if(!g.alive)continue;
+    g.hp-=dmg; g.hitFlash=1;
+    const dx=g.x-cx, dy=g.y-cy, len=Math.hypot(dx,dy)||1;
+    g.x+=dx/len*knock; g.y+=dy/len*knock;
+    if(g.hp<=0){ g.alive=false; hell.kills++; hellParticles(g.x,g.y,6,g.color); playKill(); }
+  }
+  ghosts=ghosts.filter(g=>g.alive);
+}
+function hellClearAll(){
+  // 敕令印落：全屏镇杀
+  for(const g of ghosts){ if(g.alive){ g.alive=false; hell.kills++; hellParticles(g.x,g.y,8,g.color); } }
+  ghosts=[];
+  if(boss&&boss.alive){ boss.alive=false; boss.hp=0; hellParticles(boss.x,boss.y,30,'#c8412f'); boss=null; bossState='none'; hell.bossKills++; }
+  hellShock(pr_center());
+}
+function pr_center(){ const pr=computePaperRect(); return {x:pr.x+pr.w/2,y:pr.y+pr.h/2}; }
+
+function hellSpawnBoss(){
+  const isHell=hell.fu.tierIdx>=3;
+  const hp=isHell?200:120, r=isHell?55:42;
+  boss={
+    x:W/2,y:-90,targetY:H*0.2,hp:hp,maxHp:hp,r:r,alive:true,
+    tier:isHell?2:1,phase:0,frozen:0,burning:0,hitFlash:0,
+    weakness:'雷符',enraged:false,enterT:0,summonT:0,chargeT:0,
+    chargeDir:null,charging:false,chargeVx:0,chargeVy:0
+  };
+  bossState='enter';
+}
+
+// 鬼王压符：缓压符纸，撞到即污符
+function hellUpdateBoss(dt){
+  if(!boss||!boss.alive)return;
+  const pr=computePaperRect();
+  const cx=pr.x+pr.w/2, cy=pr.y+pr.h/2;
+  if(bossState==='enter'){
+    boss.enterT+=dt;
+    boss.y+=(boss.targetY-boss.y)*0.04;
+    if(boss.enterT>1500||Math.abs(boss.y-boss.targetY)<4){ bossState='fight'; }
+    return;
+  }
+  const spd=hell.fu.tierIdx>=3?0.16:0.10;
+  const dx=cx-boss.x, dy=cy-boss.y, len=Math.hypot(dx,dy)||1;
+  boss.x+=dx/len*spd*dt*0.06; boss.y+=dy/len*spd*dt*0.06;
+  boss.phase+=dt*0.002;
+  // 撞符纸
+  const nearX=Math.max(pr.x,Math.min(boss.x,pr.x+pr.w));
+  const nearY=Math.max(pr.y,Math.min(boss.y,pr.y+pr.h));
+  if(Math.hypot(boss.x-nearX,boss.y-nearY)<boss.r){
+    if(!boss._hitCd||boss._hitCd<=0){
+      hellPollute(3);
+      boss._hitCd=1200;
+      // 撞完弹开
+      boss.x-=dx/len*90; boss.y-=dy/len*90;
+    }
+  }
+  if(boss._hitCd>0)boss._hitCd-=dt;
+}
+
+// ---- 污符：鬼撞符纸 ----
+function hellPollute(n){
+  if(hell.state!=='drawing')return;
+  hell.breaks+=n;
+  hell.paperHp-=n;
+  shake.power=12; shake.time=280;
+  hell.failFlash=1;
+  playHellFail();
+  if(navigator.vibrate)navigator.vibrate([40,30,40]);
+  if(hell.paperHp<=0||hell.breaks>=hellMaxBreaks()) finishHellFu(true);
+}
+
+// ---- 鬼移动 / 刷怪 ----
+function hellUpdateGhosts(dt){
+  const pr=computePaperRect();
+  for(const g of ghosts){
+    if(!g.alive)continue;
+    g.phase+=dt*0.004;
+    if(g.hitFlash>0)g.hitFlash=Math.max(0,g.hitFlash-dt*0.004);
+    if(g.frozen>0){g.frozen-=dt;continue;}
+    let tx=pr.x+pr.w/2, ty=pr.y+pr.h/2;
+    const dx=tx-g.x, dy=ty-g.y, len=Math.hypot(dx,dy)||1;
+    let sx=g.speed, sy=g.speed;
+    if(g.type==='flyer'){ g.flyT+=dt*0.005; g.x+=dx/len*sx*dt*0.06+Math.cos(g.flyT)*0.8; g.y+=dy/len*sy*dt*0.06+Math.sin(g.flyT)*0.8; }
+    else if(g.type==='zigzag'){ g.phase+=dt*0.004; g.x+=dx/len*sx*dt*0.06+Math.cos(g.phase*3)*1.4; g.y+=dy/len*sy*dt*0.06; }
+    else { g.x+=dx/len*sx*dt*0.06; g.y+=dy/len*sy*dt*0.06; }
+    if(g.type==='hidden'){ g.hidePhase+=dt*0.002; g.alpha=0.25+0.75*Math.abs(Math.sin(g.hidePhase)); }
+    // 撞符纸 → 污符
+    const nx=Math.max(pr.x,Math.min(g.x,pr.x+pr.w));
+    const ny=Math.max(pr.y,Math.min(g.y,pr.y+pr.h));
+    if(Math.hypot(g.x-nx,g.y-ny)<g.r){
+      g.alive=false;
+      hellParticles(g.x,g.y,5,'#8a2b21');
+      hellPollute(1);
+    }
+  }
+  ghosts=ghosts.filter(g=>g.alive);
+}
+
+function hellUpdateSpawner(dt){
+  if(hell.state!=='drawing')return;
+  hell.spawnT-=dt;
+  const d=hellDiff();
+  const tb=HELL_TIER_BASE[hell.fu.tierIdx]||HELL_TIER_BASE[0];
+  const cap=tb.max+d.extra;
+  if(hell.spawnT<=0 && ghosts.length<cap){
+    const pool=tb.types;
+    hellSpawnGhost(pool[Math.floor(Math.random()*pool.length)]);
+    hell.spawnT=tb.interval*d.spawnMul;
+  }
+  if(d.boss>0 && !boss && hell.bossSpawned<d.boss && hell.segIdx>=Math.floor(hell.fu.segments.length*0.25)){
+    hell.bossSpawned++; hellSpawnBoss();
+  }
+}
+
+// ---- 通用小工具 ----
+function hellParticles(x,y,n,color){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*6.28,s=2+Math.random()*6;
+    particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
+      r:2+Math.random()*4,color:color||'#c8412f',
+      life:600+Math.random()*400,maxLife:1000,gravity:0.02});
+  }
+}
+function hellShock(x,y){
+  activations.push({x:x,y:y,glyph:'',color:'#c8412f',grade:4,
+    r:10,maxR:Math.max(W,H)*0.9,life:700,maxLife:700,alpha:1});
+}
+
+// ---- 笔画中心（符力波圆心） ----
+function hellStrokeCenter(pts){
+  let x=0,y=0; for(const p of pts){x+=p.x;y+=p.y;}
+  return {x:x/pts.length, y:y/pts.length};
+}
+
+// ---- 纸血条（画符页左上，朱砂色） ----
+function drawHellPaperHp(){
+  const x=14,y=H*0.075,w=120,h=9;
+  const pct=Math.max(0,hell.paperHp/hell.paperMaxHp);
+  ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(x-1,y-1,w+2,h+2);
+  ctx.fillStyle='rgba(90,81,69,0.5)'; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle=pct>0.5?'#b83a2e':pct>0.25?'#c8612f':'#8a2b21';
+  ctx.fillRect(x,y,w*pct,h);
+  ctx.strokeStyle='rgba(169,129,74,0.6)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h);
+  ctx.textAlign='left'; ctx.fillStyle='#e8d8b0'; ctx.font='11px serif';
+  ctx.fillText('符纸 '+hell.paperHp+'/'+hell.paperMaxHp, x, y+h+13);
+}
+// ---- 难度 + 斩鬼数（画符页右上补充） ----
+function drawHellCombatHud(){
+  ctx.textAlign='right'; ctx.fillStyle='#a9814a'; ctx.font='bold 13px serif';
+  ctx.fillText(hellDiff().name+' · 斩鬼 '+hell.kills+(hell.bossKills?' · 鬼王 '+hell.bossKills:''), W-14, H*0.05+20);
+}
+
 
 // ---- 进入 / 退出 ----
 function enterHellMode(){
@@ -1417,30 +1689,53 @@ function renderHellSelect(){
   const grid=document.getElementById('hell-grid');
   grid.innerHTML='';
   HELL_FU.forEach(fu=>{
-    const unlocked=hellUnlocked(fu);
-    const best=hellBestGrade(fu.id);
+    const open1=hellFuUnlocked(fu,1);
     const card=document.createElement('div');
-    card.className='hf-card'+(unlocked?'':' locked');
-    const badge=best?`<span class="hf-grade" style="color:${GRADE_COLOR[best]};border-color:${GRADE_COLOR[best]}">${GRADE_NAME[best]}</span>`:'';
+    card.className='hf-card'+(open1?'':' locked');
+    // 五重难度点：显示各难度最佳品级 / 是否解锁
+    let pips='';
+    for(let d=1;d<=5;d++){
+      const un=hellDiffUnlocked(fu.id,d);
+      const g=hellGradeOf(fu.id,d);
+      const col=g?GRADE_COLOR[g]:'#5a5145';
+      pips+=`<span class="hf-pip${un?'':' off'}" data-d="${d}" style="border-color:${col};${g?`background:${col}`:''}" title="${HELL_DIFFS[d-1].name}${g?' · '+GRADE_NAME[g]:''}">${d}</span>`;
+    }
     card.innerHTML=
       `<div class="hf-img" style="background-image:url('${ASSET_SRC['hf_'+fu.id]}')"></div>`+
       `<div class="hf-name">${fu.name}</div>`+
-      `<div class="hf-tier">${fu.tier} · ${fu.segments.length}段</div>`+
-      badge+
-      (unlocked?'':`<div class="hf-lock">🔒<br>需先成前置符</div>`);
-    if(unlocked) card.onclick=()=>startHellFu(fu.id);
+      `<div class="hf-tier">${fu.tier} · ${fu.segments.length}段 · 五重</div>`+
+      `<div class="hf-pips">${pips}</div>`+
+      (open1?'':`<div class="hf-lock">🔒<br>需先成前置符</div>`);
+    if(open1){
+      card.onclick=(e)=>{
+        const pip=e.target.closest&&e.target.closest('.hf-pip');
+        if(pip&&!pip.classList.contains('off')){ startHellFu(fu.id, parseInt(pip.dataset.d,10)); return; }
+        // 点卡片本体 → 进入最高已解锁难度
+        let top=1; for(let d=1;d<=5;d++) if(hellDiffUnlocked(fu.id,d)) top=d;
+        startHellFu(fu.id, top);
+      };
+    }
     grid.appendChild(card);
   });
   document.getElementById('hell-coin').textContent=meta.coin;
   document.getElementById('hell-ink').textContent=meta.ink;
+  const m=meta.hellFu&&meta.hellFu.mastery?meta.hellFu.mastery.length:0;
+  const el=document.getElementById('hell-mastery');
+  if(el) el.textContent='精通 '+m+' / 8';
 }
 
-function startHellFu(id){
+function startHellFu(id,diff){
   gameMode='hell';
   const fu=HELL_FU_BY_ID[id];
-  hell.fu=fu; hell.segIdx=0; hell.segScores=[]; hell.breaks=0; hell.completed=[];
+  hell.fu=fu; hell.diff=diff||1; hell.segIdx=0; hell.segScores=[]; hell.breaks=0; hell.completed=[];
   hell.stroke={active:false,points:[],brush:[]};
   hell.result=null; hell.failFlash=0; hell.segFlash=0; hell.sealT=0; hell.burnT=0; hell.resultShown=false;
+  // 战斗初始化
+  const tb=HELL_TIER_BASE[fu.tierIdx]||HELL_TIER_BASE[0];
+  hell.paperMaxHp=Math.max(1, tb.paper+hellDiff().paperD);
+  hell.paperHp=hell.paperMaxHp;
+  hell.spawnT=900; hell.kills=0; hell.bossKills=0; hell.bossSpawned=0; hell.elapsed=0;
+  ghosts=[]; particles=[]; floatTexts=[]; activations=[]; boss=null; bossState='none';
   hell.state='drawing';
   document.getElementById('hell-select').classList.remove('show');
   document.getElementById('hell-result').classList.remove('show');
@@ -1475,10 +1770,19 @@ function hellPointerUp(){
   const seg=hell.fu.segments[hell.segIdx];
   const score=matchSegmentScore(pts, seg.tpl);
   if(score>=HELL_PASS){
+    // 符力波：以落笔处为心，伤害+击退全场鬼
+    const dmg=hellSegDamage(score, seg.isDan);
+    const kn=hellSegKnock(seg.isDan);
+    const c=hellStrokeCenter(pts);
+    activations.push({x:c.x,y:c.y,glyph:seg.isDan?'敕':'',color:seg.isDan?'#c8412f':'#e0b860',
+      grade:seg.isDan?4:3, r:8, maxR:kn+120, life:420, maxLife:420, alpha:1});
+    hellWaveDamage(dmg,kn);
+    floatTexts.push({x:c.x,y:c.y-30,text:(seg.isDan?'符胆·':'')+dmg+'伤',color:seg.isDan?'#c8412f':'#e0b860',life:900,size:seg.isDan?22:16});
     hell.segScores.push(score);
     hell.completed.push({seg, score});
     hell.segIdx++;
     hell.segFlash=1;
+    if(seg.isDan){ shake.power=Math.max(shake.power,10); shake.time=260; }
     playChime(seg.isDan);
     if(navigator.vibrate)navigator.vibrate(20);
     if(hell.segIdx>=hell.fu.segments.length) finishHellFu();
@@ -1524,17 +1828,15 @@ function finishHellFu(ruined){
     if(gkey==='gold')ink=3; else if(gkey==='purple')ink=1;
     if(hell.fu.tierIdx===3)ink+=2;
     meta.coin+=coin; meta.ink+=ink;
-    if(!meta.hellFu)meta.hellFu={completed:{}};
-    if(!meta.hellFu.completed)meta.hellFu.completed={};
-    const rank={gold:5,purple:4,blue:3,white:2,grey:1};
-    const prev=meta.hellFu.completed[hell.fu.id];
-    if(!prev || rank[gkey]>rank[prev]) meta.hellFu.completed[hell.fu.id]=gkey;
-    saveMeta();
+    hellClearAll();                 // 敕令印落 · 全屏镇杀
+    hellSaveGrade(hell.fu.id, hell.diff, gkey);
     playSeal();
   } else {
     playHellFail();
   }
-  hell.result={avg, coef, score, oneStroke, gkey, breaks:hell.breaks, coin, ink, success, ruined:!!ruined};
+  hell.result={avg, coef, score, oneStroke, gkey, breaks:hell.breaks, coin, ink, success, ruined:!!ruined,
+    diff:hell.diff, kills:hell.kills, bossKills:hell.bossKills, paperHp:hell.paperHp, paperMaxHp:hell.paperMaxHp,
+    survived:Math.round(hell.elapsed/1000)};
   document.getElementById('hell-draw-exit').classList.remove('show');
   hell.state='result';
   hell.sealT=0; hell.burnT=0; hell.resultShown=false;
@@ -1543,7 +1845,20 @@ function finishHellFu(ruined){
 // ---- 更新 ----
 function updateHell(dt){
   if(hell.failFlash>0)hell.failFlash=Math.max(0,hell.failFlash-dt*0.002);
-  if(hell.segFlash>0)hell.segFlash=Math.max(0,hell.segFlash-dt*0.0016);
+  if(hell.segFlash>0)hell.segFlash=Math.max(0,hell.segFlash-dt*0.002);
+  // 粒子 / 浮动文字（与主模式共用）
+  for(const p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity||0;p.life-=dt;}
+  particles=particles.filter(p=>p.life>0);
+  for(const f of floatTexts){f.y-=dt*0.03;f.life-=dt;}
+  floatTexts=floatTexts.filter(f=>f.life>0);
+  for(const a of activations){a.life-=dt;a.r+=(a.maxR-a.r)*0.18;a.alpha=Math.max(0,a.life/a.maxLife);}
+  activations=activations.filter(a=>a.life>0);
+  if(hell.state==='drawing'){
+    hell.elapsed+=dt;
+    hellUpdateSpawner(dt);
+    hellUpdateGhosts(dt);
+    hellUpdateBoss(dt);
+  }
   if(hell.state==='result'){
     if(hell.result.success) hell.sealT=Math.min(1,hell.sealT+dt*0.0016);
     else hell.burnT=Math.min(1,hell.burnT+dt*0.0012);
@@ -1589,9 +1904,15 @@ function renderHell(){
   ctx.clearRect(0,0,W,H);
   if(hell.state==='select'){ ctx.restore(); return; } // 选符页由 DOM 呈现
   computePaperRect();
+  drawGhosts();
+  if(boss&&boss.alive)drawBoss();
   drawHellPaper();
   if(hell.state==='drawing') drawHellDrawing();
   else if(hell.state==='result') drawHellResultScene();
+  drawParticles();
+  drawActivations();
+  drawFloats();
+  drawHellHUD();
   ctx.restore();
 }
 function computePaperRect(){
@@ -1601,6 +1922,7 @@ function computePaperRect(){
   let ph=pw*1.5;
   if(ph>availH){ ph=availH; pw=ph/1.5; }
   hell.paperRect={ x:(W-pw)/2, y:topM+(availH-ph)/2, w:pw, h:ph };
+  return hell.paperRect;
 }
 function drawHellPaper(){
   const r=hell.paperRect;
@@ -1691,6 +2013,8 @@ function drawHellHUD(){
   ctx.textAlign='left';
   ctx.fillStyle='rgba(200,180,140,0.5)'; ctx.font='12px serif';
   ctx.fillText('照金光笔顺描画 · 一气呵成得上品', 14, H*0.05);
+  drawHellPaperHp();
+  drawHellCombatHud();
 }
 function drawHellResultScene(){
   const fu=hell.fu, N=fu.segments.length, r=hell.result;
@@ -3127,7 +3451,8 @@ showTitleMenu();
   <div class="hs-header">
     <button class="hs-back" onclick="exitHellMode()">← 返回</button>
     <div class="hs-title">地狱画符</div>
-    <div class="hs-sub">临摹真符 · 一笔成符 · 上品灵符</div>
+    <div class="hs-sub">临摹真符 · 画符即战 · 五重难度</div>
+  <div class="hs-mastery" id="hell-mastery"></div>
     <div class="hs-wallet">魂币 <b id="hell-coin">0</b> · 墨精 <b id="hell-ink">0</b></div>
   </div>
   <div id="hell-grid" class="hs-grid"></div>
