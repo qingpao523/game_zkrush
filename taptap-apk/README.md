@@ -1,7 +1,7 @@
 # 钟馗·一笔镇妖 — TapTap Android 打包工程
 
 把 H5 游戏《钟馗·一笔镇妖》用 **Capacitor** 包成原生 Android APK，用于上传 TapTap。
-游戏本体是单文件 `www/index.html`（已把 30 张 PNG 美术资源 base64 内联，离线可玩，竖屏）。
+游戏本体是单文件 `www/index.html`（已把 40 张 PNG 美术资源 base64 内联，含地狱画符模式全部素材，离线可玩，竖屏，最新版含无限关卡+地狱画符v2+新首页）。
 
 ---
 
@@ -22,7 +22,7 @@ TapTap 移动端商店是 **APK 分发平台**，不是 H5 zip 托管：
 ```
 taptap-apk/
 ├── www/
-│   └── index.html          # 游戏本体（3.4MB，资源已内联，竖屏守卫已注入）
+│   └── index.html          # 游戏本体（16MB，40张资源已内联，竖屏守卫已注入）
 ├── resources/
 │   ├── icon.png            # 1024×1024 启动图标（金「馗」字，#0a0a1a 底）
 │   ├── taptap-icon-512.png # 512×512（TapTap 商店图标，直角方图）
