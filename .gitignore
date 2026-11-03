@@ -24,3 +24,7 @@ wechat-minigame/.idea/
 
 # Hell-fu intermediate raw renders (not referenced; final assets are fu-*.png)
 assets/images/hell-fu/_raw/
+
+# Local TapTap packaging, not part of the H5 release
+taptap-apk/
+taptap-assets/

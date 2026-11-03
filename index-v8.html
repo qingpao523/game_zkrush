@@ -2,11 +2,17 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="一笔镇妖">
+<meta name="description" content="钟馗 · 一笔镇妖：水墨国风手势画符 H5 小游戏。">
 <title>钟馗 · 一笔镇妖</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; touch-action: none; user-select: none; -webkit-user-select: none; font-family: 'KaiTi','STKaiti','PingFang SC',serif; }
+html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #0a0a1a; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; font-family: 'KaiTi','STKaiti','PingFang SC',serif; }
 canvas { display: block; width: 100%; height: 100%; }
 
 /* ====== 教程覆盖层 ====== */
@@ -591,8 +597,8 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <script>
 // ============================================================
-// 《钟馗 · 一笔镇妖》v6
-// 加速节奏 + 8波鬼潮 + 百鬼王Boss + 胜利画面
+// 《钟馗 · 一笔镇妖》v8
+// 肉鸽镇妖 + 地狱画符 + H5 / GitHub Pages
 // ============================================================
 
 const canvas = document.getElementById('c');
@@ -3444,6 +3450,13 @@ function closeFork(){
 
 // 启动：进标题菜单
 showTitleMenu();
+
+// H5：阻止微信/浏览器下拉刷新和双击缩放把画布拖走。
+document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', function (e) {
+  if (e.target && e.target.closest && e.target.closest('#workshop,#hell-select,#tutorial,#title-menu')) return;
+  if (e.cancelable) e.preventDefault();
+}, { passive: false });
 </script>
 
 <button id="hell-draw-exit" onclick="backToHellSelect()">✕ 退出画符</button>
